@@ -1,13 +1,10 @@
-import { Pool } from 'pg';
+import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, Role } from '../generated/prisma/client';
 
-const pool = new Pool({
-  connectionString: process.env['DATABASE_URL'],
+const prisma = new PrismaClient({
+  adapter: new PrismaPg(process.env['DATABASE_URL'] as string),
 });
-
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 
 export async function findByEmail(email: string) {
   return prisma.user.findUnique({
