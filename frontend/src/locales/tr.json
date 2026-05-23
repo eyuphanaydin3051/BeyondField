@@ -1,1 +1,37 @@
-{}
+{
+  "auth": {
+    "login": {
+      "title": "Giriş Yap",
+      "subtitle": "BeyondField hesabına giriş yap",
+      "email": "E-posta",
+      "password": "Şifre",
+      "submit": "Giriş Yap",
+      "loading": "Giriş yapılıyor...",
+      "noAccount": "Hesabın yok mu?",
+      "register": "Kayıt ol"
+    },
+    "register": {
+      "title": "Hesap Oluştur",
+      "subtitle": "BeyondField'a katıl",
+      "email": "E-posta",
+      "password": "Şifre",
+      "confirmPassword": "Şifre Tekrar",
+      "role": "Rol",
+      "roles": {
+        "ADMIN": "Yönetici",
+        "COACH": "Antrenör",
+        "VIEWER": "İzleyici"
+      },
+      "submit": "Kayıt Ol",
+      "loading": "Kayıt yapılıyor...",
+      "hasAccount": "Zaten hesabın var mı?",
+      "login": "Giriş yap",
+      "passwordMismatch": "Şifreler eşleşmiyor"
+    },
+    "errors": {
+      "invalidCredentials": "E-posta veya şifre hatalı",
+      "emailInUse": "Bu e-posta adresi zaten kullanımda",
+      "generic": "Bir hata oluştu, lütfen tekrar deneyin"
+    }
+  }
+}

@@ -1,1 +1,37 @@
-{}
+{
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "subtitle": "Sign in to your BeyondField account",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign In",
+      "loading": "Signing in...",
+      "noAccount": "Don't have an account?",
+      "register": "Register"
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Join BeyondField",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "role": "Role",
+      "roles": {
+        "ADMIN": "Administrator",
+        "COACH": "Coach",
+        "VIEWER": "Viewer"
+      },
+      "submit": "Register",
+      "loading": "Registering...",
+      "hasAccount": "Already have an account?",
+      "login": "Sign in",
+      "passwordMismatch": "Passwords do not match"
+    },
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "emailInUse": "This email address is already in use",
+      "generic": "An error occurred, please try again"
+    }
+  }
+}
