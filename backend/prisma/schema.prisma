@@ -1,0 +1,152 @@
+// BeyondField — Sports Statistics Platform
+// Prisma Schema
+//
+// Architecture notes:
+//   - Raw match events are stored in MatchEvent (append-only, never mutated).
+//   - Aggregated statistics are written to PlayerStat by a background worker
+//     triggered on each MatchEvent insert. Read queries hit only PlayerStat.
+//   - Media assets (logos, photos) are stored in Cloudflare R2 / AWS S3;
+//     the database persists only the URL string.
+//   - No session or in-memory state is stored in the database (stateless).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  COACH
+  VIEWER
+}
+
+enum Position {
+  GOALKEEPER
+  DEFENDER
+  MIDFIELDER
+  FORWARD
+}
+
+enum MatchStatus {
+  SCHEDULED
+  IN_PROGRESS
+  FINISHED
+}
+
+enum EventType {
+  GOAL
+  ASSIST
+  YELLOW_CARD
+  RED_CARD
+  SUBSTITUTION
+  SAVE
+  TACKLE
+  FOUL
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+/// System users — coaches, admins, and read-only viewers.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+}
+
+/// Football clubs / teams.
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  /// Cloudflare R2 / AWS S3 public URL — nullable until an image is uploaded.
+  logoUrl   String?
+  createdAt DateTime @default(now())
+
+  players    Player[]
+  homeMatches Match[]  @relation("HomeMatches")
+  awayMatches Match[]  @relation("AwayMatches")
+}
+
+/// Individual players registered to a team.
+model Player {
+  id           String   @id @default(cuid())
+  firstName    String
+  lastName     String
+  position     Position
+  jerseyNumber Int
+  /// Cloudflare R2 / AWS S3 public URL — nullable until a photo is uploaded.
+  photoUrl     String?
+  teamId       String
+  createdAt    DateTime @default(now())
+
+  team   Team         @relation(fields: [teamId], references: [id])
+  events MatchEvent[]
+  stats  PlayerStat[]
+}
+
+/// A scheduled or completed match between two teams.
+model Match {
+  id         String      @id @default(cuid())
+  homeTeamId String
+  awayTeamId String
+  matchDate  DateTime
+  status     MatchStatus
+  homeScore  Int         @default(0)
+  awayScore  Int         @default(0)
+  createdAt  DateTime    @default(now())
+
+  homeTeam Team         @relation("HomeMatches", fields: [homeTeamId], references: [id])
+  awayTeam Team         @relation("AwayMatches", fields: [awayTeamId], references: [id])
+  events   MatchEvent[]
+}
+
+/// Raw event log — append-only.
+/// Every on-pitch event is written here exactly once and never mutated.
+/// A background worker reads new rows and updates PlayerStat accordingly.
+model MatchEvent {
+  id        String    @id @default(cuid())
+  matchId   String
+  playerId  String
+  eventType EventType
+  /// Minute of the match at which the event occurred (0-120+).
+  minute    Int
+  createdAt DateTime  @default(now())
+
+  match  Match  @relation(fields: [matchId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
+}
+
+/// Pre-aggregated statistics per player per season.
+/// These values are NEVER computed at query time.
+/// A background worker recalculates and upserts this table whenever a new
+/// MatchEvent is inserted.  All read queries for statistics use only this table.
+model PlayerStat {
+  id           String @id @default(cuid())
+  playerId     String
+  /// Season identifier in "YYYY-YY" format, e.g. "2024-25".
+  season       String
+  goals        Int    @default(0)
+  assists      Int    @default(0)
+  yellowCards  Int    @default(0)
+  redCards     Int    @default(0)
+  saves        Int    @default(0)
+  tackles      Int    @default(0)
+  fouls        Int    @default(0)
+  matchesPlayed Int   @default(0)
+
+  player Player @relation(fields: [playerId], references: [id])
+
+  /// Each player can have at most one stat row per season.
+  @@unique([playerId, season])
+}
