@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
+import teamRoutes from './routes/teamRoutes';
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // --- Auth Routes ---
 app.use('/api/auth', authRoutes);
+app.use('/api/teams', teamRoutes);
 
 // --- Health Check ---
 app.get('/health', (_req: Request, res: Response) => {

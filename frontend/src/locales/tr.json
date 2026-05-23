@@ -32,6 +32,58 @@
       "invalidCredentials": "E-posta veya şifre hatalı",
       "emailInUse": "Bu e-posta adresi zaten kullanımda",
       "generic": "Bir hata oluştu, lütfen tekrar deneyin"
+    },
+    "logout": "Çıkış Yap"
+  },
+  "sportSelection": {
+    "title": "Spor Seçimi",
+    "subtitle": "Devam etmek için bir spor dalı seçin",
+    "comingSoon": "Yakında",
+    "sports": {
+      "ultimate": "Ultimate Frisbee",
+      "football": "Futbol",
+      "basketball": "Basketbol",
+      "volleyball": "Voleybol"
     }
+  },
+  "teamSelection": {
+    "title": "Takım Seçimi",
+    "subtitle": "Bir takım seç veya yeni bir takım oluştur",
+    "loading": "Takımlar yükleniyor...",
+    "empty": "Henüz bir takımın yok. İlk takımını oluştur.",
+    "createButton": "Yeni Takım Oluştur",
+    "modal": {
+      "title": "Yeni Takım Oluştur",
+      "nameLabel": "Takım Adı",
+      "namePlaceholder": "Örn. Ankara Yıldızları",
+      "logoLabel": "Logo URL (opsiyonel)",
+      "logoPlaceholder": "https://...",
+      "cancel": "İptal",
+      "submit": "Oluştur",
+      "submitting": "Oluşturuluyor..."
+    },
+    "errors": {
+      "loadFailed": "Takımlar yüklenemedi",
+      "createFailed": "Takım oluşturulamadı",
+      "nameRequired": "Takım adı zorunludur"
+    }
+  },
+  "layout": {
+    "nav": {
+      "dashboard": "Panel",
+      "roster": "Kadro",
+      "matches": "Maçlar",
+      "settings": "Ayarlar"
+    },
+    "topbar": {
+      "switchTeam": "Takım Değiştir",
+      "switchSport": "Spor Değiştir"
+    }
+  },
+  "dashboard": {
+    "title": "Panel",
+    "welcome": "Hoş geldin",
+    "currentTeam": "Aktif Takım",
+    "noStats": "Henüz istatistik yok. Maç verisi girildiğinde burada görünecek."
   }
 }

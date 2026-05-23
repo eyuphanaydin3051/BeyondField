@@ -32,6 +32,58 @@
       "invalidCredentials": "Invalid email or password",
       "emailInUse": "This email address is already in use",
       "generic": "An error occurred, please try again"
+    },
+    "logout": "Sign Out"
+  },
+  "sportSelection": {
+    "title": "Choose a Sport",
+    "subtitle": "Pick a sport to continue",
+    "comingSoon": "Coming soon",
+    "sports": {
+      "ultimate": "Ultimate Frisbee",
+      "football": "Football",
+      "basketball": "Basketball",
+      "volleyball": "Volleyball"
     }
+  },
+  "teamSelection": {
+    "title": "Choose a Team",
+    "subtitle": "Select a team or create a new one",
+    "loading": "Loading teams...",
+    "empty": "You don't have any teams yet. Create your first one.",
+    "createButton": "Create New Team",
+    "modal": {
+      "title": "Create New Team",
+      "nameLabel": "Team Name",
+      "namePlaceholder": "e.g. Ankara Stars",
+      "logoLabel": "Logo URL (optional)",
+      "logoPlaceholder": "https://...",
+      "cancel": "Cancel",
+      "submit": "Create",
+      "submitting": "Creating..."
+    },
+    "errors": {
+      "loadFailed": "Could not load teams",
+      "createFailed": "Could not create team",
+      "nameRequired": "Team name is required"
+    }
+  },
+  "layout": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "roster": "Roster",
+      "matches": "Matches",
+      "settings": "Settings"
+    },
+    "topbar": {
+      "switchTeam": "Switch Team",
+      "switchSport": "Switch Sport"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome",
+    "currentTeam": "Active Team",
+    "noStats": "No stats yet. They will appear here once match data is entered."
   }
 }
