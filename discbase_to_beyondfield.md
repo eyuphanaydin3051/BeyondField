@@ -264,16 +264,22 @@
 
 ## Sıra (Önerilen Uygulama Sırası)
 
+> Mantık: stat tablolarını dolduran tek kaynak Match Tracking'in event akışıdır. Tracking yapılmadan downstream sayfalar (Dashboard top scorers, Roster leaderboard, Tournament stats, Player Detail, CSV) gerçek veriyle test edilemez. Bu yüzden Tracking sona değil, veri üreten ilk halkaya alındı.
+
 1. **Şema migration** (Tournament, TournamentRosterPlayer, MatchPlayerStat, TournamentPlayerStat, PlayerPassEdge, UserSettings + Match/Event/PlayerStat alan eklemeleri + enum genişletme). Tek migration.
-2. **Sayfa 6: Roster** — Player CRUD'siz hiçbir maç anlamlı değil; en altta o.
-3. **Sayfa 5: Dashboard** — boş takım için bile çalışır, hızlı kazanım.
-4. **Sayfa 7: Tournament List → Sayfa 8: Tournament Detail**
-5. **Sayfa 9: Match Detail** (önce read-only)
-6. **Sayfa 10: Match Tracking** (en karmaşık, sona)
-7. **Sayfa 11: Player Detail**
-8. **Sayfa 12: Settings + CSV Export**
+2. **Sayfa 6: Roster (Player CRUD)** — event'in `playerId`'ye ihtiyacı var.
+3. **Sayfa 7: Tournament List** — sadece create/list; stats sekmesi sonra.
+4. **Sayfa 9: Match Detail — minimum:** maç create + read-only iskelet (event listesi başta boş).
+5. **Sayfa 10: Match Tracking** — `POST /events` transaction'ı burada doğar; stat tablolarını doldurur. Bu tamamlandığı an downstream her şey gerçek veriyle doğrulanabilir.
+6. **Sayfa 5: Dashboard** — top scorers, recent matches artık dolu.
+7. **Sayfa 8: Tournament Detail (Stats + Roster sekmeleri)** — TournamentPlayerStat artık dolu.
+8. **Sayfa 9 tamamlama:** Match Detail'in event timeline + MatchPlayerStat tablosu.
+9. **Sayfa 11: Player Detail** — kariyer + pass network.
+10. **Sayfa 12: Settings + CSV Export** — gerçek pre-aggregate veri üzerinden CSV.
 
 Her sayfa: backend route → service → repo → migration (gerekiyorsa) → frontend page → i18n keys (tr+en) → manuel smoke test (`npm run dev` backend + frontend, gerçek tıklamayla doğrulama).
+
+**Uçtan uca doğrulama zinciri (adım 5 sonunda hazır):** Oyuncu ekle → Maç oluştur → Tracking'e gir → Birkaç event gir → DB'de FrisbeePlayerStat / MatchPlayerStat / TournamentPlayerStat dolmuş olmalı (`npx prisma studio`) → Sonraki sayfalar bu veri üzerinde test edilir.
 
 ---
 
