@@ -336,7 +336,7 @@
       "injurySub": "Sakatlık",
       "passReceived": "PAS ALDI",
       "drop": "DROP",
-      "goal": "GOOL"
+      "goal": "Gol"
     },
     "pull": {
       "selectPuller": "Kim pull atacak?",
@@ -372,6 +372,7 @@
     "liveEvents": "CANLI OLAY GEÇMİŞİ",
     "noEventsYet": "Henüz olay yok",
     "addVideo": "YouTube video bağla",
+    "noVideoBound": "Video bağlı değil — Maç Detay sayfasından ekleyin",
     "processing": "İşleniyor...",
     "point": "Sayı #{{number}}",
     "backWarning": "Bu sayı için girilen veriler kaybolacak. Devam etmek istiyor musunuz?"
@@ -446,7 +447,17 @@
       "player": "Oyuncu",
       "goals": "Goller",
       "assists": "Asistler",
-      "blocks": "Bloklar"
+      "blocks": "Bloklar",
+      "video": {
+        "title": "Maç Videosu",
+        "hint": "İstatistik takibini başlatmadan önce maçın YouTube video linkini ekleyin.",
+        "placeholder": "YouTube linki veya video ID",
+        "linkedId": "Bağlı Video ID",
+        "change": "Değiştir",
+        "remove": "Kaldır",
+        "requiredHint": "Önce video linkini ekleyin",
+        "saveFailed": "Video kaydedilemedi"
+      }
     },
     "status": {
       "SCHEDULED": "Planlandı",

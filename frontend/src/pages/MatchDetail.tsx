@@ -1,9 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
 import apiClient from '../lib/apiClient'
 import type { MatchDetailResponse } from '../types'
+
+function extractYoutubeId(raw: string): string {
+  const trimmed = raw.trim()
+  const m = trimmed.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{11})/)
+  return m ? m[1] : trimmed
+}
 
 interface ErrorResponse { status: 'error'; message: string }
 
@@ -26,6 +32,42 @@ export default function MatchDetail() {
   const [data, setData] = useState<MatchDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [videoInput, setVideoInput] = useState('')
+  const [videoEditing, setVideoEditing] = useState(false)
+  const [videoSaving, setVideoSaving] = useState(false)
+  const [videoError, setVideoError] = useState<string | null>(null)
+
+  const handleSaveVideo = useCallback(async () => {
+    if (!id) return
+    setVideoSaving(true); setVideoError(null)
+    try {
+      const vid = extractYoutubeId(videoInput)
+      await apiClient.put(`/api/matches/${id}`, { youtubeVideoId: vid })
+      setData((prev) => prev ? { ...prev, match: { ...prev.match, youtubeVideoId: vid } } : prev)
+      setVideoEditing(false)
+    } catch (err) {
+      const ax = err as AxiosError<ErrorResponse>
+      setVideoError(ax.response?.data?.message ?? t('matches.detail.video.saveFailed'))
+    } finally {
+      setVideoSaving(false)
+    }
+  }, [id, videoInput, t])
+
+  const handleClearVideo = useCallback(async () => {
+    if (!id) return
+    setVideoSaving(true); setVideoError(null)
+    try {
+      await apiClient.put(`/api/matches/${id}`, { youtubeVideoId: null })
+      setData((prev) => prev ? { ...prev, match: { ...prev.match, youtubeVideoId: null } } : prev)
+      setVideoInput('')
+      setVideoEditing(false)
+    } catch (err) {
+      const ax = err as AxiosError<ErrorResponse>
+      setVideoError(ax.response?.data?.message ?? t('matches.detail.video.saveFailed'))
+    } finally {
+      setVideoSaving(false)
+    }
+  }, [id, t])
 
   useEffect(() => {
     let cancelled = false
@@ -34,7 +76,10 @@ export default function MatchDetail() {
       setLoading(true); setError(null)
       try {
         const res = await apiClient.get<{ status: 'success'; data: MatchDetailResponse }>(`/api/matches/${id}`)
-        if (!cancelled) setData(res.data.data)
+        if (!cancelled) {
+          setData(res.data.data)
+          setVideoInput(res.data.data.match.youtubeVideoId ?? '')
+        }
       } catch (err) {
         const ax = err as AxiosError<ErrorResponse>
         if (!cancelled) setError(ax.response?.data?.message ?? t('matches.errors.detailFailed'))
@@ -103,16 +148,105 @@ export default function MatchDetail() {
           </div>
 
           {!match.finished && (
-            <div className="mt-4">
-              <Link to={`/matches/${match.id}/track`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-400 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-green-500/20">
-                <span className="w-2 h-2 rounded-full bg-white animate-pulse" aria-hidden="true" />
-                {t('matches.detail.trackLive')}
-              </Link>
+            <div className="mt-4 flex items-center gap-3 flex-wrap">
+              {match.youtubeVideoId ? (
+                <Link to={`/matches/${match.id}/track`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-400 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-green-500/20">
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" aria-hidden="true" />
+                  {t('matches.detail.trackLive')}
+                </Link>
+              ) : (
+                <span
+                  title={t('matches.detail.video.requiredHint')}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/[0.04] text-slate-500 rounded-xl font-semibold text-sm border border-white/[0.06] cursor-not-allowed"
+                >
+                  <span className="w-2 h-2 rounded-full bg-slate-600" aria-hidden="true" />
+                  {t('matches.detail.trackLive')}
+                </span>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Video URL (set before live tracking) */}
+      {!match.finished && (
+        <section className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-5">
+          <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
+            📹 {t('matches.detail.video.title')}
+          </h2>
+          {match.youtubeVideoId && !videoEditing ? (
+            <div className="flex items-center gap-3 flex-wrap">
+              <a
+                href={`https://www.youtube.com/watch?v=${match.youtubeVideoId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-shrink-0"
+              >
+                <img
+                  src={`https://img.youtube.com/vi/${match.youtubeVideoId}/mqdefault.jpg`}
+                  alt="YouTube thumbnail"
+                  className="w-40 aspect-video object-cover rounded-lg border border-white/[0.08]"
+                />
+              </a>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-slate-500 mb-1">{t('matches.detail.video.linkedId')}</p>
+                <p className="font-mono text-sm text-slate-200 truncate">{match.youtubeVideoId}</p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setVideoInput(match.youtubeVideoId ?? ''); setVideoEditing(true) }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.10] text-slate-200 border border-white/[0.08] transition-all"
+                  >
+                    {t('matches.detail.video.change')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleClearVideo()}
+                    disabled={videoSaving}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition-all disabled:opacity-50"
+                  >
+                    {t('matches.detail.video.remove')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-slate-400">{t('matches.detail.video.hint')}</p>
+              <div className="flex gap-2 flex-wrap">
+                <input
+                  type="text"
+                  value={videoInput}
+                  onChange={(e) => setVideoInput(e.target.value)}
+                  placeholder={t('matches.detail.video.placeholder')}
+                  className="flex-1 min-w-[200px] bg-white/[0.06] border border-white/[0.10] rounded-xl px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-green-500/50"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSaveVideo()}
+                  disabled={videoSaving || !videoInput.trim()}
+                  className="px-4 py-2 bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-all"
+                >
+                  {videoSaving ? t('common.saving') : t('common.save')}
+                </button>
+                {match.youtubeVideoId && (
+                  <button
+                    type="button"
+                    onClick={() => { setVideoEditing(false); setVideoInput(match.youtubeVideoId ?? '') }}
+                    className="px-3 py-2 text-slate-500 hover:text-slate-300 text-sm"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                )}
+              </div>
+              {videoError && (
+                <p className="text-xs text-red-400">{videoError}</p>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Events Timeline */}

@@ -372,6 +372,7 @@
     "liveEvents": "LIVE EVENT FEED",
     "noEventsYet": "No events yet",
     "addVideo": "Link YouTube video",
+    "noVideoBound": "No video linked — add one from the Match Detail page",
     "processing": "Processing...",
     "point": "Point #{{number}}",
     "backWarning": "Data entered for this point will be lost. Do you want to continue?"
@@ -446,7 +447,17 @@
       "player": "Player",
       "goals": "Goals",
       "assists": "Assists",
-      "blocks": "Blocks"
+      "blocks": "Blocks",
+      "video": {
+        "title": "Match Video",
+        "hint": "Add the YouTube video link for this match before starting live tracking.",
+        "placeholder": "YouTube URL or video ID",
+        "linkedId": "Linked Video ID",
+        "change": "Change",
+        "remove": "Remove",
+        "requiredHint": "Add a video link first",
+        "saveFailed": "Could not save video"
+      }
     },
     "status": {
       "SCHEDULED": "Scheduled",

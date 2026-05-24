@@ -435,6 +435,14 @@ export interface ArchivePointInput {
   whoScored: 'US' | 'THEM';
   startMode: 'OFFENSE' | 'DEFENSE';
   durationSeconds?: number;
+  events?: Array<{
+    actionType: string;
+    playerId: string;
+    secondaryPlayerId?: string;
+    videoTimestampSeconds?: number;
+    scoreUsAtEvent?: number;
+    scoreThemAtEvent?: number;
+  }>;
 }
 
 export async function archivePoint(
@@ -513,6 +521,99 @@ export async function archivePoint(
           },
           update: { ...pointsUpdate, ...plusMinusUpdate },
         });
+      }
+    }
+
+    // Process events batch
+    if (input.events && input.events.length > 0) {
+      for (const evt of input.events) {
+        // OPPONENT_GOAL requires no real playerId foreign key — skip.
+        // Also skip any unknown action types.
+        if (evt.playerId === 'opponent' || !VALID_ACTION_TYPES.includes(evt.actionType)) {
+          continue;
+        }
+
+        // Only accept players that were already validated in the lineup
+        const evtPlayer = players.find(p => p.id === evt.playerId);
+        if (!evtPlayer) continue;
+
+        // 1. Raw event log
+        await tx.frisbeeMatchEvent.create({
+          data: {
+            matchId,
+            playerId: evt.playerId,
+            secondaryPlayerId: evt.secondaryPlayerId ?? null,
+            actionType: evt.actionType as Parameters<typeof tx.frisbeeMatchEvent.create>[0]['data']['actionType'],
+            minute: 0,
+            videoTimestampSeconds: evt.videoTimestampSeconds ?? null,
+            scoreUsAtEvent: evt.scoreUsAtEvent ?? null,
+            scoreThemAtEvent: evt.scoreThemAtEvent ?? null,
+          },
+        });
+
+        const deltas = getStatDeltas(evt.actionType);
+        if (Object.keys(deltas).length === 0) continue;
+
+        const incs = buildIncrements(deltas);
+
+        // 2. Career stats
+        await tx.frisbeePlayerStat.upsert({
+          where: { playerId: evt.playerId },
+          create: { playerId: evt.playerId, ...deltas },
+          update: incs,
+        });
+
+        // 3. Match stats
+        await tx.matchPlayerStat.upsert({
+          where: { matchId_playerId: { matchId, playerId: evt.playerId } },
+          create: { matchId, playerId: evt.playerId, ...deltas },
+          update: incs,
+        });
+
+        // 4. Tournament stats
+        if (match.tournamentId) {
+          await tx.tournamentPlayerStat.upsert({
+            where: { tournamentId_playerId: { tournamentId: match.tournamentId, playerId: evt.playerId } },
+            create: { tournamentId: match.tournamentId, playerId: evt.playerId, ...deltas },
+            update: incs,
+          });
+        }
+
+        // 5. Pass edge (COMPLETION and GOAL)
+        if ((evt.actionType === 'COMPLETION' || evt.actionType === 'GOAL') && evt.secondaryPlayerId) {
+          await tx.playerPassEdge.upsert({
+            where: {
+              fromPlayerId_toPlayerId: {
+                fromPlayerId: evt.playerId,
+                toPlayerId: evt.secondaryPlayerId,
+              },
+            },
+            create: { fromPlayerId: evt.playerId, toPlayerId: evt.secondaryPlayerId, count: 1 },
+            update: { count: { increment: 1 } },
+          });
+        }
+
+        // 6. DROP: thrower (secondaryPlayerId) earns completion credit
+        if (evt.actionType === 'DROP' && evt.secondaryPlayerId) {
+          const throwerId = evt.secondaryPlayerId;
+          await tx.frisbeePlayerStat.upsert({
+            where: { playerId: throwerId },
+            create: { playerId: throwerId, completions: 1, successfulPasses: 1 },
+            update: buildIncrements({ completions: 1, successfulPasses: 1 }),
+          });
+          await tx.matchPlayerStat.upsert({
+            where: { matchId_playerId: { matchId, playerId: throwerId } },
+            create: { matchId, playerId: throwerId, completions: 1, successfulPasses: 1 },
+            update: buildIncrements({ completions: 1, successfulPasses: 1 }),
+          });
+          if (match.tournamentId) {
+            await tx.tournamentPlayerStat.upsert({
+              where: { tournamentId_playerId: { tournamentId: match.tournamentId, playerId: throwerId } },
+              create: { tournamentId: match.tournamentId, playerId: throwerId, completions: 1, successfulPasses: 1 },
+              update: buildIncrements({ completions: 1, successfulPasses: 1 }),
+            });
+          }
+        }
       }
     }
   });

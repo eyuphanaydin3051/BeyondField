@@ -13,6 +13,15 @@ type TrackingStep = 'roster' | 'start_mode' | 'tracking'
 type GameMode = 'OFFENSE' | 'DEFENSE'
 type PositionFilter = 'ALL' | 'HANDLER' | 'CUTTER' | 'HYBRID'
 
+type LocalPointEvent = {
+  actionType: string
+  playerId: string
+  secondaryPlayerId?: string
+  videoTimestampSeconds?: number
+  scoreUsAtEvent?: number
+  scoreThemAtEvent?: number
+}
+
 interface HistoryEntry {
   gameMode: GameMode
   activePasserId: string | null
@@ -35,39 +44,20 @@ function sortPlayers(list: Player[]): Player[] {
   })
 }
 
-// ─── API stubs (Agent 3 fills these) ────────────────────────────────────────
-
-async function recordEventApi(
-  matchId: string,
-  actionType: string,
-  playerId: string,
-  secondaryPlayerId?: string,
-  opts?: { scoreUs?: number; scoreThem?: number; videoTimestampSeconds?: number },
-): Promise<void> {
-  await apiClient.post(`/api/matches/${matchId}/events`, {
-    playerId,
-    secondaryPlayerId: secondaryPlayerId ?? undefined,
-    actionType,
-    scoreUsAtEvent: opts?.scoreUs,
-    scoreThemAtEvent: opts?.scoreThem,
-    videoTimestampSeconds: opts?.videoTimestampSeconds,
-  })
-}
-
-async function undoEventApi(matchId: string): Promise<void> {
-  await apiClient.delete(`/api/matches/${matchId}/events/last`)
-}
+// ─── API helpers ─────────────────────────────────────────────────────────────
 
 async function archivePointApi(
   matchId: string,
   lineup: string[],
   whoScored: 'US' | 'THEM',
   startMode: 'OFFENSE' | 'DEFENSE',
+  events: LocalPointEvent[],
 ): Promise<void> {
   await apiClient.post(`/api/matches/${matchId}/points/archive`, {
     lineup,
     whoScored,
     startMode,
+    events,
   })
 }
 
@@ -134,6 +124,7 @@ export default function MatchTracking() {
   const [pointCount, setPointCount] = useState(0)
   const [liveEvents, setLiveEvents] = useState<string[]>([])
   const [archivedPoints, setArchivedPoints] = useState<Array<{ index: number; whoScored: 'US' | 'THEM'; homeScore: number; awayScore: number }>>([])
+  const [localPointEvents, setLocalPointEvents] = useState<LocalPointEvent[]>([])
 
   // ── Modal state ─────────────────────────────────────────────────────────
   const [showFinishModal, setShowFinishModal] = useState(false)
@@ -143,11 +134,8 @@ export default function MatchTracking() {
   const [injuryOutPlayer, setInjuryOutPlayer] = useState<Player | null>(null)
   const [playerPickerFor, setPlayerPickerFor] = useState<'block' | 'callahan' | 'pickup' | null>(null)
 
-  // ── YouTube state ────────────────────────────────────────────────────────
+  // ── YouTube state (video URL is set on Match Detail page) ────────────────
   const [youtubeVideoId, setYoutubeVideoId] = useState<string>('')
-  const [showYoutubePanel, setShowYoutubePanel] = useState(false)
-  const [youtubeInput, setYoutubeInput] = useState<string>('')
-  const [savingVideo, setSavingVideo] = useState(false)
   const ytPlayerRef = useRef<any>(null)
 
   // Pull current timestamp from YouTube player (returns undefined if no video)
@@ -180,7 +168,6 @@ export default function MatchTracking() {
         setHomeScore(matchData?.homeScore ?? 0)
         setAwayScore(matchData?.awayScore ?? 0)
         setYoutubeVideoId(matchData?.youtubeVideoId ?? '')
-        setYoutubeInput(matchData?.youtubeVideoId ?? '')
         setPlayers(playersRes.data.data)
         if (matchData?.status === 'SCHEDULED') {
           await apiClient.post(`/api/matches/${matchId}/start`)
@@ -220,6 +207,10 @@ export default function MatchTracking() {
       { gameMode, activePasserId, isPullPhase, homeScore, awayScore },
     ])
   }, [gameMode, activePasserId, isPullPhase, homeScore, awayScore])
+
+  const addLocalEvent = useCallback((event: LocalPointEvent) => {
+    setLocalPointEvents(prev => [...prev, event])
+  }, [])
 
   const filteredPlayers = sortPlayers(
     positionFilter === 'ALL' ? players : players.filter((p) => p.position === positionFilter),
@@ -270,12 +261,18 @@ export default function MatchTracking() {
     newAway: number,
   ) => {
     if (!matchId) return
-    await archivePointApi(
-      matchId,
-      selectedLineup.map((p) => p.id),
-      who,
-      gameMode,
-    )
+    setActionLoading(true)
+    try {
+      await archivePointApi(
+        matchId,
+        selectedLineup.map((p) => p.id),
+        who,
+        gameMode,
+        localPointEvents,
+      )
+    } finally {
+      setActionLoading(false)
+    }
     setLastLineup(selectedLineup)
     setHomeScore(newHome)
     setAwayScore(newAway)
@@ -289,6 +286,7 @@ export default function MatchTracking() {
     })
     setLiveEvents([])
     setHistoryStack([])
+    setLocalPointEvents([])
     setTrackingStep('roster')
     setSelectedLineup([])
     setActivePasserId(null)
@@ -296,96 +294,67 @@ export default function MatchTracking() {
     setPullingPlayerId(null)
     setPullTimerMs(0)
     setPullTimerRunning(false)
-  }, [matchId, selectedLineup, gameMode])
+  }, [matchId, selectedLineup, gameMode, localPointEvents])
 
-  const handleCatch = useCallback(async (receiverId: string) => {
+  const handleCatch = useCallback((receiverId: string) => {
     if (!matchId || !activePasserId) return
-    setActionLoading(true)
-    try {
-      pushHistory()
-      const thrower = selectedLineup.find((p) => p.id === activePasserId)
-      const receiver = selectedLineup.find((p) => p.id === receiverId)
-      await recordEventApi(matchId, 'COMPLETION', activePasserId, receiverId, { videoTimestampSeconds: vts() })
-      pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Completion → ${receiver?.firstName} ${receiver?.lastName}`)
-      setActivePasserId(receiverId)
-    } finally {
-      setActionLoading(false)
-    }
-  }, [matchId, activePasserId, selectedLineup, pushHistory, pushLiveEvent, vts])
+    pushHistory()
+    const thrower = selectedLineup.find((p) => p.id === activePasserId)
+    const receiver = selectedLineup.find((p) => p.id === receiverId)
+    addLocalEvent({ actionType: 'COMPLETION', playerId: activePasserId, secondaryPlayerId: receiverId, videoTimestampSeconds: vts() })
+    pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Completion → ${receiver?.firstName} ${receiver?.lastName}`)
+    setActivePasserId(receiverId)
+  }, [matchId, activePasserId, selectedLineup, pushHistory, pushLiveEvent, addLocalEvent, vts])
 
   const handlePickup = useCallback((playerId: string) => {
     setActivePasserId(playerId)
     setPlayerPickerFor(null)
   }, [])
 
-  const handleDrop = useCallback(async (receiverId: string) => {
+  const handleDrop = useCallback((receiverId: string) => {
     if (!matchId || !activePasserId) return
-    setActionLoading(true)
-    try {
-      pushHistory()
-      const thrower = selectedLineup.find((p) => p.id === activePasserId)
-      const receiver = selectedLineup.find((p) => p.id === receiverId)
-      await recordEventApi(matchId, 'DROP', receiverId, activePasserId, { videoTimestampSeconds: vts() })
-      pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Hata/Pas → ${receiver?.firstName} ${receiver?.lastName}: Drop`)
-      setGameMode('DEFENSE')
-      setIsPullPhase(false)
-      setActivePasserId(null)
-    } finally {
-      setActionLoading(false)
-    }
-  }, [matchId, activePasserId, selectedLineup, pushHistory, pushLiveEvent, vts])
+    pushHistory()
+    const thrower = selectedLineup.find((p) => p.id === activePasserId)
+    const receiver = selectedLineup.find((p) => p.id === receiverId)
+    addLocalEvent({ actionType: 'DROP', playerId: receiverId, secondaryPlayerId: activePasserId, videoTimestampSeconds: vts() })
+    pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Hata/Pas → ${receiver?.firstName} ${receiver?.lastName}: Drop`)
+    setGameMode('DEFENSE')
+    setIsPullPhase(false)
+    setActivePasserId(null)
+  }, [matchId, activePasserId, selectedLineup, pushHistory, pushLiveEvent, addLocalEvent, vts])
 
-  const handleThrowaway = useCallback(async () => {
+  const handleThrowaway = useCallback(() => {
     if (!matchId || !activePasserId) return
-    setActionLoading(true)
-    try {
-      pushHistory()
-      const thrower = selectedLineup.find((p) => p.id === activePasserId)
-      await recordEventApi(matchId, 'THROWAWAY', activePasserId, undefined, { videoTimestampSeconds: vts() })
-      pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Hata/Pas`)
-      setGameMode('DEFENSE')
-      setIsPullPhase(false)
-      setActivePasserId(null)
-    } finally {
-      setActionLoading(false)
-    }
-  }, [matchId, activePasserId, selectedLineup, pushHistory, pushLiveEvent, vts])
+    pushHistory()
+    const thrower = selectedLineup.find((p) => p.id === activePasserId)
+    addLocalEvent({ actionType: 'THROWAWAY', playerId: activePasserId, videoTimestampSeconds: vts() })
+    pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Hata/Pas`)
+    setGameMode('DEFENSE')
+    setIsPullPhase(false)
+    setActivePasserId(null)
+  }, [matchId, activePasserId, selectedLineup, pushHistory, pushLiveEvent, addLocalEvent, vts])
 
-  const handleBlock = useCallback(async (playerId: string) => {
+  const handleBlock = useCallback((playerId: string) => {
     if (!matchId) return
-    setActionLoading(true)
-    try {
-      pushHistory()
-      const blocker = selectedLineup.find((p) => p.id === playerId)
-      await recordEventApi(matchId, 'BLOCK', playerId, undefined, { videoTimestampSeconds: vts() })
-      pushLiveEvent(`${blocker?.firstName} ${blocker?.lastName}: Blok`)
-      setGameMode('OFFENSE')
-      setActivePasserId(null)
-      setPlayerPickerFor(null)
-    } finally {
-      setActionLoading(false)
-    }
-  }, [matchId, selectedLineup, pushHistory, pushLiveEvent, vts])
+    pushHistory()
+    const blocker = selectedLineup.find((p) => p.id === playerId)
+    addLocalEvent({ actionType: 'BLOCK', playerId, videoTimestampSeconds: vts() })
+    pushLiveEvent(`${blocker?.firstName} ${blocker?.lastName}: Blok`)
+    setGameMode('OFFENSE')
+    setActivePasserId(null)
+    setPlayerPickerFor(null)
+  }, [matchId, selectedLineup, pushHistory, pushLiveEvent, addLocalEvent, vts])
 
   const handleCallahan = useCallback(async (playerId: string) => {
     if (!matchId) return
-    setActionLoading(true)
-    try {
-      pushHistory()
-      const scorer = selectedLineup.find((p) => p.id === playerId)
-      const newHomeScore = homeScore + 1
-      await recordEventApi(matchId, 'CALLAHAN', playerId, undefined, {
-        scoreUs: newHomeScore,
-        scoreThem: awayScore,
-        videoTimestampSeconds: vts(),
-      })
-      pushLiveEvent(`${scorer?.firstName} ${scorer?.lastName}: Callahan`)
-      setPlayerPickerFor(null)
-      await finishPoint('US', newHomeScore, awayScore)
-    } finally {
-      setActionLoading(false)
-    }
-  }, [matchId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, finishPoint, vts])
+    pushHistory()
+    const scorer = selectedLineup.find((p) => p.id === playerId)
+    const newHomeScore = homeScore + 1
+    addLocalEvent({ actionType: 'CALLAHAN', playerId, videoTimestampSeconds: vts(), scoreUsAtEvent: newHomeScore, scoreThemAtEvent: awayScore })
+    pushLiveEvent(`${scorer?.firstName} ${scorer?.lastName}: Callahan`)
+    setPlayerPickerFor(null)
+    await finishPoint('US', newHomeScore, awayScore)
+  }, [matchId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, addLocalEvent, finishPoint, vts])
 
   const handleOpponentTurnover = useCallback(() => {
     pushHistory()
@@ -396,87 +365,51 @@ export default function MatchTracking() {
 
   const handleScore = useCallback(async (who: 'US' | 'THEM') => {
     if (!matchId || !activePasserId) return
-    setActionLoading(true)
-    try {
-      pushHistory()
-      const activePlayer = selectedLineup.find((p) => p.id === activePasserId)
-      let newHome = homeScore
-      let newAway = awayScore
-      if (who === 'US') {
-        newHome = homeScore + 1
-        await recordEventApi(matchId, 'GOAL', activePasserId, undefined, {
-          scoreUs: newHome,
-          scoreThem: awayScore,
-          videoTimestampSeconds: vts(),
-        })
-        pushLiveEvent(`${activePlayer?.firstName} ${activePlayer?.lastName}: Gol`)
-      } else {
-        newAway = awayScore + 1
-        await recordEventApi(matchId, 'OPPONENT_GOAL', 'opponent', undefined, {
-          scoreUs: homeScore,
-          scoreThem: newAway,
-          videoTimestampSeconds: vts(),
-        })
-      }
-      await finishPoint(who, newHome, newAway)
-    } finally {
-      setActionLoading(false)
+    pushHistory()
+    const activePlayer = selectedLineup.find((p) => p.id === activePasserId)
+    let newHome = homeScore
+    let newAway = awayScore
+    if (who === 'US') {
+      newHome = homeScore + 1
+      addLocalEvent({ actionType: 'GOAL', playerId: activePasserId, videoTimestampSeconds: vts(), scoreUsAtEvent: newHome, scoreThemAtEvent: awayScore })
+      pushLiveEvent(`${activePlayer?.firstName} ${activePlayer?.lastName}: Gol`)
+    } else {
+      newAway = awayScore + 1
+      addLocalEvent({ actionType: 'OPPONENT_GOAL', playerId: 'opponent', videoTimestampSeconds: vts(), scoreUsAtEvent: homeScore, scoreThemAtEvent: newAway })
     }
-  }, [matchId, activePasserId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, finishPoint, vts])
+    await finishPoint(who, newHome, newAway)
+  }, [matchId, activePasserId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, addLocalEvent, finishPoint, vts])
 
   const handleOpponentScore = useCallback(async () => {
     if (!matchId) return
-    setActionLoading(true)
-    try {
-      pushHistory()
-      const newAway = awayScore + 1
-      await recordEventApi(matchId, 'OPPONENT_GOAL', 'opponent', undefined, {
-        scoreUs: homeScore,
-        scoreThem: newAway,
-        videoTimestampSeconds: vts(),
-      })
-      await finishPoint('THEM', homeScore, newAway)
-    } finally {
-      setActionLoading(false)
-    }
-  }, [matchId, homeScore, awayScore, pushHistory, finishPoint])
+    pushHistory()
+    const newAway = awayScore + 1
+    addLocalEvent({ actionType: 'OPPONENT_GOAL', playerId: 'opponent', videoTimestampSeconds: vts(), scoreUsAtEvent: homeScore, scoreThemAtEvent: newAway })
+    await finishPoint('THEM', homeScore, newAway)
+  }, [matchId, homeScore, awayScore, pushHistory, addLocalEvent, finishPoint, vts])
 
   const handleGoalToPlayer = useCallback(async (receiverId: string) => {
     if (!matchId || !activePasserId) return
-    setActionLoading(true)
-    try {
-      pushHistory()
-      const thrower = selectedLineup.find((p) => p.id === activePasserId)
-      const receiver = selectedLineup.find((p) => p.id === receiverId)
-      const newHomeScore = homeScore + 1
-      await recordEventApi(matchId, 'GOAL', activePasserId, receiverId, {
-        scoreUs: newHomeScore,
-        scoreThem: awayScore,
-        videoTimestampSeconds: vts(),
-      })
-      pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Asist → ${receiver?.firstName} ${receiver?.lastName}: Gol`)
-      await finishPoint('US', newHomeScore, awayScore)
-    } finally {
-      setActionLoading(false)
-    }
-  }, [matchId, activePasserId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, finishPoint, vts])
+    pushHistory()
+    const thrower = selectedLineup.find((p) => p.id === activePasserId)
+    const receiver = selectedLineup.find((p) => p.id === receiverId)
+    const newHomeScore = homeScore + 1
+    addLocalEvent({ actionType: 'GOAL', playerId: activePasserId, secondaryPlayerId: receiverId, videoTimestampSeconds: vts(), scoreUsAtEvent: newHomeScore, scoreThemAtEvent: awayScore })
+    pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Asist → ${receiver?.firstName} ${receiver?.lastName}: Gol`)
+    await finishPoint('US', newHomeScore, awayScore)
+  }, [matchId, activePasserId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, addLocalEvent, finishPoint, vts])
 
-  const handleUndo = useCallback(async () => {
-    if (!matchId || historyStack.length === 0) return
-    setActionLoading(true)
-    try {
-      await undoEventApi(matchId)
-      const prev = historyStack[historyStack.length - 1]
-      setGameMode(prev.gameMode)
-      setActivePasserId(prev.activePasserId)
-      setIsPullPhase(prev.isPullPhase)
-      setHomeScore(prev.homeScore)
-      setAwayScore(prev.awayScore)
-      setHistoryStack((s) => s.slice(0, -1))
-    } finally {
-      setActionLoading(false)
-    }
-  }, [matchId, historyStack])
+  const handleUndo = useCallback(() => {
+    if (historyStack.length === 0) return
+    const prev = historyStack[historyStack.length - 1]
+    setGameMode(prev.gameMode)
+    setActivePasserId(prev.activePasserId)
+    setIsPullPhase(prev.isPullPhase)
+    setHomeScore(prev.homeScore)
+    setAwayScore(prev.awayScore)
+    setHistoryStack((s) => s.slice(0, -1))
+    setLocalPointEvents((e) => e.slice(0, -1))
+  }, [historyStack])
 
   // ── Pull handlers ─────────────────────────────────────────────────────────
 
@@ -486,25 +419,14 @@ export default function MatchTracking() {
     setPullTimerRunning(false)
   }, [])
 
-  const handleEndPull = useCallback(async (inBounds: boolean) => {
+  const handleEndPull = useCallback((inBounds: boolean) => {
     if (!matchId || !pullingPlayerId) return
-    setActionLoading(true)
     setPullTimerRunning(false)
-    try {
-      pushHistory()
-      await recordEventApi(
-        matchId,
-        inBounds ? 'PULL_SUCCESS' : 'PULL_FAIL',
-        pullingPlayerId,
-        undefined,
-        { videoTimestampSeconds: vts() },
-      )
-      setIsPullPhase(false)
-      setPullingPlayerId(null)
-    } finally {
-      setActionLoading(false)
-    }
-  }, [matchId, pullingPlayerId, pushHistory])
+    pushHistory()
+    addLocalEvent({ actionType: inBounds ? 'PULL_SUCCESS' : 'PULL_FAIL', playerId: pullingPlayerId, videoTimestampSeconds: vts() })
+    setIsPullPhase(false)
+    setPullingPlayerId(null)
+  }, [matchId, pullingPlayerId, pushHistory, addLocalEvent, vts])
 
   // ── Injury substitution ──────────────────────────────────────────────────
 
@@ -525,26 +447,6 @@ export default function MatchTracking() {
     setInjuryStep('out')
     setShowInjuryModal(false)
   }, [injuryOutPlayer, activePasserId])
-
-  // ── YouTube video save ───────────────────────────────────────────────────
-
-  const handleSaveVideo = useCallback(async () => {
-    if (!matchId) return
-    setSavingVideo(true)
-    try {
-      // Extract video ID from full URL or use as-is
-      let vid = youtubeInput.trim()
-      const urlMatch = vid.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/)
-      if (urlMatch) vid = urlMatch[1]
-      await apiClient.put(`/api/matches/${matchId}`, { youtubeVideoId: vid })
-      setYoutubeVideoId(vid)
-      setShowYoutubePanel(false)
-    } catch {
-      // ignore — video is optional
-    } finally {
-      setSavingVideo(false)
-    }
-  }, [matchId, youtubeInput])
 
   // ── Finish match ──────────────────────────────────────────────────────────
 
@@ -570,6 +472,7 @@ export default function MatchTracking() {
     setPullTimerMs(0)
     setPullTimerRunning(false)
     setHistoryStack([])
+    setLocalPointEvents([])
   }, [])
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -914,28 +817,9 @@ export default function MatchTracking() {
         {/* Left: video area */}
         <div className="flex flex-col overflow-hidden" style={{ flex: '1 1 65%' }}>
 
-          {/* YouTube video or placeholder */}
-          {showYoutubePanel ? (
-            <div className="p-3 bg-[#0f1117] border-b border-white/[0.08] flex gap-2 flex-shrink-0">
-              <input
-                type="text"
-                value={youtubeInput}
-                onChange={(e) => setYoutubeInput(e.target.value)}
-                placeholder="Video ID veya URL"
-                className="flex-1 bg-white/[0.06] border border-white/[0.10] rounded-xl px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-green-500/50"
-              />
-              <button
-                type="button"
-                onClick={() => void handleSaveVideo()}
-                disabled={savingVideo || !youtubeInput.trim()}
-                className="px-4 py-2 bg-green-500 hover:bg-green-400 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all"
-              >
-                {savingVideo ? '...' : t('common.save')}
-              </button>
-              <button type="button" onClick={() => setShowYoutubePanel(false)} className="px-2 text-slate-500 hover:text-slate-300 text-sm">✕</button>
-            </div>
-          ) : youtubeVideoId ? (
-            <div className="relative w-full flex-shrink-0" style={{ paddingBottom: '56.25%' }}>
+          {/* YouTube video (set on Match Detail page) */}
+          {youtubeVideoId ? (
+            <div className="relative w-full aspect-video min-h-0 flex-shrink bg-black">
               <YouTube
                 videoId={youtubeVideoId}
                 opts={{ width: '100%', height: '100%', playerVars: { controls: 1, rel: 0 } }}
@@ -943,22 +827,11 @@ export default function MatchTracking() {
                 className="absolute inset-0 w-full h-full"
                 iframeClassName="w-full h-full"
               />
-              <button
-                type="button"
-                onClick={() => { setShowYoutubePanel(true); setYoutubeInput(youtubeVideoId) }}
-                className="absolute bottom-1 right-1 px-2 py-0.5 text-[10px] text-slate-400 bg-black/60 rounded hover:bg-black/80 transition-all"
-              >
-                📹
-              </button>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => setShowYoutubePanel(true)}
-              className="flex-shrink-0 w-full flex items-center justify-center gap-2 py-10 bg-white/[0.02] border-b border-white/[0.06] text-xs text-slate-500 hover:text-slate-400 transition-all"
-            >
-              📹 {t('tracking.addVideo')}
-            </button>
+            <div className="w-full aspect-video min-h-0 flex-shrink flex items-center justify-center gap-2 bg-white/[0.02] border-b border-white/[0.06] text-xs text-slate-500">
+              📹 {t('tracking.noVideoBound')}
+            </div>
           )}
 
           {/* Pull phase UI (shown in left area when in pull phase) */}
@@ -1058,16 +931,20 @@ export default function MatchTracking() {
 
       {/* ── Bottom: horizontal player cards ── */}
       {!isPullPhase && (
-        <div className="flex-shrink-0 border-t border-white/[0.08] bg-[#090c10]">
-          <div className="overflow-x-auto">
-            <div className="flex gap-2 p-2.5" style={{ minWidth: 'max-content' }}>
-              {selectedLineup.map((player) => {
+        <div className="flex-shrink-0 h-[160px] border-t border-white/[0.08] bg-[#090c10] overflow-x-auto">
+          <div
+            className="grid gap-2 p-2.5 h-full"
+            style={{
+              gridTemplateColumns: `repeat(${selectedLineup.length + (gameMode === 'DEFENSE' ? 1 : 0)}, minmax(0, 1fr))`,
+            }}
+          >
+            {selectedLineup.map((player) => {
                 const isDiskHolder = player.id === activePasserId
                 return (
                   <div
                     key={player.id}
                     className={[
-                      'flex flex-col items-center gap-1 p-2.5 rounded-2xl border transition-all min-w-[100px]',
+                      'flex flex-col items-center gap-1 p-2.5 rounded-2xl border transition-all min-w-0 h-full',
                       isDiskHolder
                         ? 'bg-blue-500/10 border-blue-500/40'
                         : 'bg-[#0f1117] border-white/[0.08]',
@@ -1102,27 +979,29 @@ export default function MatchTracking() {
 
                     {/* OFFENSE: other players (receive candidates) */}
                     {gameMode === 'OFFENSE' && activePasserId && !isDiskHolder && (
-                      <div className="flex flex-col gap-0.5 w-full mt-0.5">
+                      <div className="flex flex-col gap-0.5 w-full mt-auto">
+                        <div className="grid grid-cols-2 gap-0.5 w-full">
+                          <button
+                            type="button"
+                            onClick={() => handleDrop(player.id)}
+                            className="py-1 rounded-lg text-[11px] font-bold bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 transition-all"
+                          >
+                            {t('tracking.actions.drop')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleGoalToPlayer(player.id)}
+                            className="py-1 rounded-lg text-[11px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/40 hover:bg-purple-500/30 transition-all"
+                          >
+                            {t('tracking.actions.goal')}
+                          </button>
+                        </div>
                         <button
                           type="button"
                           onClick={() => handleCatch(player.id)}
                           className="w-full py-1 rounded-lg text-[11px] font-bold bg-green-500/20 text-green-400 border border-green-500/40 hover:bg-green-500/30 transition-all"
                         >
                           {t('tracking.actions.passReceived')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDrop(player.id)}
-                          className="w-full py-1 rounded-lg text-[11px] font-bold bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 transition-all"
-                        >
-                          {t('tracking.actions.drop')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleGoalToPlayer(player.id)}
-                          className="w-full py-1 rounded-lg text-[11px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/40 hover:bg-purple-500/30 transition-all"
-                        >
-                          {t('tracking.actions.goal')}
                         </button>
                       </div>
                     )}
@@ -1150,29 +1029,28 @@ export default function MatchTracking() {
                 )
               })}
 
-              {/* Opponent card (defense only) */}
-              {gameMode === 'DEFENSE' && (
-                <div className="flex flex-col items-center gap-1 p-2.5 rounded-2xl border border-white/[0.06] bg-white/[0.02] min-w-[100px]">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase">Rakip</span>
-                  <div className="flex flex-col gap-0.5 w-full mt-0.5">
-                    <button
-                      type="button"
-                      onClick={handleOpponentScore}
-                      className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 transition-all"
-                    >
-                      {t('tracking.actions.opponentScore')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpponentTurnover}
-                      className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/40 hover:bg-orange-500/30 transition-all"
-                    >
-                      {t('tracking.actions.opponentError')}
-                    </button>
-                  </div>
+            {/* Opponent card (defense only) */}
+            {gameMode === 'DEFENSE' && (
+              <div className="flex flex-col items-center gap-1 p-2.5 rounded-2xl border border-white/[0.06] bg-white/[0.02] min-w-0">
+                <span className="text-[11px] font-bold text-slate-500 uppercase">Rakip</span>
+                <div className="flex flex-col gap-0.5 w-full mt-0.5">
+                  <button
+                    type="button"
+                    onClick={handleOpponentScore}
+                    className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 transition-all"
+                  >
+                    {t('tracking.actions.opponentScore')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpponentTurnover}
+                    className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/40 hover:bg-orange-500/30 transition-all"
+                  >
+                    {t('tracking.actions.opponentError')}
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
