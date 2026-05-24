@@ -1,5 +1,6 @@
 import * as tournamentRepository from '../repositories/tournamentRepository';
 import {
+  assertPlayerOwnership,
   assertTeamOwnership,
   assertTournamentOwnership,
 } from './teamAuthorization';
@@ -98,4 +99,59 @@ export async function updateTournament(
 export async function deleteTournament(tournamentId: string, userId: string) {
   await assertTournamentOwnership(tournamentId, userId);
   return tournamentRepository.deleteTournament(tournamentId);
+}
+
+// ---------------------------------------------------------------------------
+// Roster
+// ---------------------------------------------------------------------------
+
+export async function getTournamentRoster(
+  tournamentId: string,
+  userId: string,
+) {
+  await assertTournamentOwnership(tournamentId, userId);
+  return tournamentRepository.findRosterByTournament(tournamentId);
+}
+
+export async function addToRoster(
+  tournamentId: string,
+  userId: string,
+  playerId: string,
+  jerseyOverride?: number | null,
+) {
+  const tournament = await assertTournamentOwnership(tournamentId, userId);
+
+  // Ensure the player belongs to the same team as the tournament
+  const player = await assertPlayerOwnership(playerId, userId);
+  if (player.teamId !== tournament.ownerTeamId) {
+    throw err(400, 'Player does not belong to this team');
+  }
+
+  const existing = await tournamentRepository.findRosterPlayer(
+    tournamentId,
+    playerId,
+  );
+  if (existing) throw err(409, 'Player is already on this tournament roster');
+
+  return tournamentRepository.addPlayerToRoster(
+    tournamentId,
+    playerId,
+    jerseyOverride,
+  );
+}
+
+export async function removeFromRoster(
+  tournamentId: string,
+  userId: string,
+  playerId: string,
+) {
+  await assertTournamentOwnership(tournamentId, userId);
+
+  const existing = await tournamentRepository.findRosterPlayer(
+    tournamentId,
+    playerId,
+  );
+  if (!existing) throw err(404, 'Player not found in this tournament roster');
+
+  return tournamentRepository.removePlayerFromRoster(tournamentId, playerId);
 }

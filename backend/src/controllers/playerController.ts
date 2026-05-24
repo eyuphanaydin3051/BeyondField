@@ -15,7 +15,12 @@ export async function listPlayers(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user!.userId;
     const teamId = req.params['teamId'] as string;
-    const players = await playerService.listPlayers(teamId, userId);
+    const search = (req.query['search'] as string) || undefined;
+    const position = (req.query['position'] as string) || undefined;
+    const players = await playerService.listPlayers(teamId, userId, {
+      search,
+      position,
+    });
     res.status(200).json({ status: 'success', data: players });
   } catch (e) {
     fail(res, e);
@@ -50,6 +55,28 @@ export async function deletePlayer(req: Request, res: Response): Promise<void> {
     const id = req.params['id'] as string;
     await playerService.deletePlayer(id, userId);
     res.status(200).json({ status: 'success' });
+  } catch (e) {
+    fail(res, e);
+  }
+}
+
+export async function getCareerStats(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const id = req.params['id'] as string;
+    const data = await playerService.getCareerStats(id, userId);
+    res.status(200).json({ status: 'success', data });
+  } catch (e) {
+    fail(res, e);
+  }
+}
+
+export async function getPassNetwork(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const id = req.params['id'] as string;
+    const data = await playerService.getPassNetwork(id, userId);
+    res.status(200).json({ status: 'success', data });
   } catch (e) {
     fail(res, e);
   }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
 import apiClient from '../lib/apiClient'
@@ -16,10 +16,53 @@ export default function Settings() {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+  const [csvExporting, setCsvExporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const changeLanguage = (lang: 'tr' | 'en') => {
+  // Load persisted settings on mount
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await apiClient.get<{ status: 'success'; data: { language?: string; theme?: string } }>('/api/me/settings')
+        const saved = res.data.data
+        if (saved?.language && saved.language !== i18n.language) {
+          i18n.changeLanguage(saved.language)
+        }
+      } catch {
+        // Settings endpoint may not exist yet — fail silently
+      }
+    }
+    load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const changeLanguage = async (lang: 'tr' | 'en') => {
     i18n.changeLanguage(lang)
+    try {
+      await apiClient.put('/api/me/settings', { language: lang })
+    } catch {
+      // Persist failure is non-critical — language already changed in UI
+    }
+  }
+
+  const handleCsvExport = async () => {
+    if (!teamId) return
+    setCsvExporting(true)
+    try {
+      const response = await apiClient.get(`/api/teams/${teamId}/export/players.csv`, {
+        responseType: 'blob',
+      })
+      const url = URL.createObjectURL(response.data as Blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'players.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      // Export failed — no UI feedback needed for now
+    } finally {
+      setCsvExporting(false)
+    }
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,6 +148,22 @@ export default function Settings() {
         <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
           {t('settings.sections.dataManagement')}
         </h2>
+
+        {/* CSV Export */}
+        <div className="flex items-center justify-between gap-4 pb-5 border-b border-white/[0.06]">
+          <div>
+            <div className="font-semibold text-white text-sm mb-1">{t('settings.export.title')}</div>
+            <p className="text-sm text-slate-500">{t('settings.export.description')}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleCsvExport}
+            disabled={csvExporting || !teamId}
+            className="flex items-center gap-2 px-4 py-2 bg-white/[0.06] hover:bg-white/[0.09] border border-white/[0.08] hover:border-white/[0.14] text-slate-200 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+          >
+            {csvExporting ? t('common.loading') : t('settings.export.button')}
+          </button>
+        </div>
 
         <div className="space-y-4">
           <div>

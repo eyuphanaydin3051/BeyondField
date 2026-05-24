@@ -11,3 +11,8 @@ export const matchRoutes = Router();
 matchRoutes.use(authMiddleware);
 matchRoutes.get('/:id', matchController.getMatch);
 matchRoutes.delete('/:id', matchController.deleteMatch);
+matchRoutes.post('/:id/start', matchController.startMatch);
+matchRoutes.post('/:id/finish', matchController.finishMatch);
+matchRoutes.post('/:id/events', matchController.recordEvent);
+matchRoutes.delete('/:id/events/last', matchController.undoLastEvent);
+matchRoutes.post('/:id/points/archive', matchController.archivePoint);

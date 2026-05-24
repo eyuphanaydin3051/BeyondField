@@ -1,0 +1,1 @@
+- [Integration Patterns](project-integration-patterns.md) — API client usage, established endpoint paths, routing, i18n, and per-page data flow conventions

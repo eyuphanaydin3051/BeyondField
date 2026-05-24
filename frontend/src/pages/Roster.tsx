@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
 import apiClient from '../lib/apiClient'
@@ -53,6 +54,8 @@ export default function Roster() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [positionFilter, setPositionFilter] = useState<PlayerPosition | 'ALL'>('ALL')
   const [sortBy, setSortBy] = useState<LeaderboardSortBy>('goals')
   const [mode, setMode] = useState<LeaderboardMode>('TOTAL')
   const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null)
@@ -65,13 +68,19 @@ export default function Roster() {
     if (!teamId) return
     setPlayersLoading(true); setPlayersError(null)
     try {
-      const res = await apiClient.get<{ status: 'success'; data: Player[] }>(`/api/teams/${teamId}/players`)
+      const params: Record<string, string> = {}
+      if (search.trim()) params['search'] = search.trim()
+      if (positionFilter !== 'ALL') params['position'] = positionFilter
+      const res = await apiClient.get<{ status: 'success'; data: Player[] }>(
+        `/api/teams/${teamId}/players`,
+        { params },
+      )
       setPlayers(res.data.data)
     } catch (err) {
       const ax = err as AxiosError<ErrorResponse>
       setPlayersError(ax.response?.data?.message ?? t('roster.errors.loadFailed'))
     } finally { setPlayersLoading(false) }
-  }, [teamId, t])
+  }, [teamId, search, positionFilter, t])
 
   const loadLeaderboard = useCallback(async () => {
     if (!teamId) return
@@ -161,7 +170,31 @@ export default function Roster() {
 
       {tab === 'players' && (
         <section className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('roster.table.searchPlaceholder')}
+              className="flex-1 min-w-[180px] bg-[#0f1117] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-green-500/60"
+            />
+            <div className="flex gap-1.5">
+              {(['ALL', ...POSITIONS] as const).map((pos) => (
+                <button
+                  key={pos}
+                  type="button"
+                  onClick={() => setPositionFilter(pos)}
+                  className={[
+                    'px-3 py-2 rounded-xl text-xs font-semibold transition-all',
+                    positionFilter === pos
+                      ? 'bg-green-500 text-white shadow-lg shadow-green-500/20'
+                      : 'bg-white/[0.05] text-slate-400 hover:bg-white/[0.08]',
+                  ].join(' ')}
+                >
+                  {pos === 'ALL' ? t('roster.table.filterAll') : t(`roster.positions.${pos}`)}
+                </button>
+              ))}
+            </div>
             <button type="button" onClick={openAdd}
               className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-400 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-green-500/20">
               <span aria-hidden="true">+</span>
@@ -188,9 +221,9 @@ export default function Roster() {
             </div>
           )}
           {!playersLoading && !playersError && players.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {players.map((p) => (
-                <div key={p.id} className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4 flex flex-col gap-3 hover:border-white/[0.14] transition-all">
+                <div key={p.id} className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4 flex flex-col items-center justify-center gap-3 aspect-[4/3] hover:border-white/[0.14] transition-all">
                   <div className="flex flex-col items-center gap-2 text-center">
                     {p.photoUrl ? (
                       <img
@@ -206,7 +239,12 @@ export default function Roster() {
                       </div>
                     )}
                     <div>
-                      <p className="font-semibold text-slate-100">{p.firstName} {p.lastName}</p>
+                      <Link
+                        to={`/players/${p.id}`}
+                        className="font-semibold text-slate-100 hover:text-green-300 transition-colors"
+                      >
+                        {p.firstName} {p.lastName}
+                      </Link>
                       <span className={`inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${POSITION_COLORS[p.position]}`}>
                         {t(`roster.positions.${p.position}`)}
                       </span>

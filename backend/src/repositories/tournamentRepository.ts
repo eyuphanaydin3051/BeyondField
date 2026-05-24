@@ -46,3 +46,63 @@ export async function deleteTournament(id: string) {
   // decrement aggregate stat tables here in a transaction.
   return prisma.tournament.delete({ where: { id } });
 }
+
+// ---------------------------------------------------------------------------
+// Roster
+// ---------------------------------------------------------------------------
+
+export async function findRosterByTournament(tournamentId: string) {
+  return prisma.tournamentRosterPlayer.findMany({
+    where: { tournamentId },
+    include: {
+      player: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          position: true,
+          jerseyNumber: true,
+          photoUrl: true,
+        },
+      },
+    },
+    orderBy: { player: { jerseyNumber: 'asc' } },
+  });
+}
+
+export async function findRosterPlayer(tournamentId: string, playerId: string) {
+  return prisma.tournamentRosterPlayer.findUnique({
+    where: { tournamentId_playerId: { tournamentId, playerId } },
+  });
+}
+
+export async function addPlayerToRoster(
+  tournamentId: string,
+  playerId: string,
+  jerseyOverride?: number | null,
+) {
+  return prisma.tournamentRosterPlayer.create({
+    data: { tournamentId, playerId, jerseyOverride: jerseyOverride ?? null },
+    include: {
+      player: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          position: true,
+          jerseyNumber: true,
+          photoUrl: true,
+        },
+      },
+    },
+  });
+}
+
+export async function removePlayerFromRoster(
+  tournamentId: string,
+  playerId: string,
+) {
+  return prisma.tournamentRosterPlayer.delete({
+    where: { tournamentId_playerId: { tournamentId, playerId } },
+  });
+}

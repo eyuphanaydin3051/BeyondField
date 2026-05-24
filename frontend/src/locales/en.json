@@ -138,7 +138,9 @@
     },
     "table": {
       "empty": "No players yet. Add the first player.",
-      "addButton": "Add Player"
+      "addButton": "Add Player",
+      "searchPlaceholder": "Search players...",
+      "filterAll": "All"
     },
     "card": {
       "photoAlt": "{{name}} photo"
@@ -215,7 +217,15 @@
     "modal": {
       "create": {
         "title": "New Tournament",
-        "submit": "Create"
+        "submit": "Create",
+        "step1Title": "Tournament Info",
+        "step2Title": "Select Roster",
+        "step2Subtitle": "Choose players for this tournament (optional)",
+        "next": "Continue",
+        "finish": "Finish",
+        "skip": "Skip roster selection",
+        "savingRoster": "Saving roster...",
+        "stepOf": "{{current}} / {{total}}"
       },
       "delete": {
         "title": "Delete Tournament",
@@ -240,6 +250,11 @@
       "tr": "Turkish",
       "en": "English"
     },
+    "export": {
+      "title": "Export Players",
+      "description": "Download the team roster as a CSV file.",
+      "button": "Download CSV"
+    },
     "import": {
       "title": "Import from DiscBase",
       "description": "Upload your DiscBase backup file to import your players.",
@@ -249,6 +264,94 @@
       "importing": "Importing...",
       "success": "{{imported}} players imported, {{skipped}} skipped.",
       "error": "Import failed"
+    }
+  },
+  "tracking": {
+    "roster": {
+      "title": "Select Lineup",
+      "selectPlayers": "Select 7 players",
+      "selected": "{{count}}/7 Selected",
+      "loadLastLine": "Load Last Line",
+      "next": "Next",
+      "filter": {
+        "all": "All",
+        "handler": "Handler",
+        "cutter": "Cutter",
+        "hybrid": "Hybrid"
+      }
+    },
+    "startMode": {
+      "title": "How Are We Starting?",
+      "offense": "Offense",
+      "offenseDesc": "We start with the disc",
+      "defense": "Defense",
+      "defenseDesc": "Starting with a pull"
+    },
+    "actions": {
+      "throwaway": "Throwaway",
+      "undo": "Undo",
+      "opponentScore": "Opponent Score",
+      "opponentTurnover": "Opponent Turnover",
+      "block": "Block",
+      "callahan": "Callahan",
+      "finishMatch": "Finish Match",
+      "injurySub": "Injury"
+    },
+    "pull": {
+      "selectPuller": "Who will pull?",
+      "startTimer": "Start",
+      "stopTimer": "Stop",
+      "inBounds": "In Bounds",
+      "outOfBounds": "Out of Bounds",
+      "hangTime": "Hang Time"
+    },
+    "offense": {
+      "whoHasDisk": "Who has the disc?",
+      "threwTo": "Who did they throw to?",
+      "whoPickedUp": "Who picked up the disc?"
+    },
+    "defense": {
+      "title": "Defense Mode",
+      "whoBlocked": "Who made the block?",
+      "whoCallahan": "Who got the Callahan?",
+      "whoPickedUp": "Who picked up the disc?"
+    },
+    "injury": {
+      "title": "Injury Substitution",
+      "whoOut": "Who is coming off?",
+      "whoIn": "Who is coming on?"
+    },
+    "finish": {
+      "title": "Finish Match",
+      "confirm": "Are you sure you want to finish the match?",
+      "button": "Finish Match",
+      "cancel": "Cancel"
+    },
+    "processing": "Processing...",
+    "point": "Point #{{number}}",
+    "backWarning": "Data entered for this point will be lost. Do you want to continue?"
+  },
+  "player": {
+    "detail": "Player Detail",
+    "back": "← Players",
+    "loading": "Loading player...",
+    "error": "Could not load player",
+    "stats": {
+      "goals": "Goals",
+      "assists": "Assists",
+      "blocks": "Blocks",
+      "callahans": "Callahans",
+      "throwaways": "Throwaways",
+      "drops": "Drops",
+      "completions": "Completions",
+      "plusMinus": "Plus/Minus",
+      "perMatch": "Per Match",
+      "teamAvg": "Team Avg."
+    },
+    "passNetwork": {
+      "title": "Pass Network",
+      "passes": "passes",
+      "noData": "No pass data"
     }
   },
   "matches": {

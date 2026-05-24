@@ -8,6 +8,8 @@ import Roster from './pages/Roster'
 import TournamentList from './pages/TournamentList'
 import MatchList from './pages/MatchList'
 import MatchDetail from './pages/MatchDetail'
+import MatchTracking from './pages/MatchTracking'
+import PlayerDetail from './pages/PlayerDetail'
 import Settings from './pages/Settings'
 import Layout from './components/Layout'
 import ProtectedRoute from './routes/ProtectedRoute'
@@ -34,8 +36,11 @@ export default function App() {
             <Route path="/tournaments" element={<TournamentList />} />
             <Route path="/matches" element={<MatchList />} />
             <Route path="/matches/:id" element={<MatchDetail />} />
+            <Route path="/players/:id" element={<PlayerDetail />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
+          {/* Full-screen page, intentionally outside <Layout /> */}
+          <Route path="/matches/:id/track" element={<MatchTracking />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

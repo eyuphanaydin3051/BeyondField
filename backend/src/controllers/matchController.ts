@@ -53,3 +53,58 @@ export async function getMatch(req: Request, res: Response): Promise<void> {
     fail(res, e);
   }
 }
+
+export async function startMatch(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const id = req.params['id'] as string;
+    const data = await matchService.setMatchStatus(id, userId, 'IN_PROGRESS');
+    res.status(200).json({ status: 'success', data });
+  } catch (e) {
+    fail(res, e);
+  }
+}
+
+export async function finishMatch(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const id = req.params['id'] as string;
+    const data = await matchService.setMatchStatus(id, userId, 'FINISHED');
+    res.status(200).json({ status: 'success', data });
+  } catch (e) {
+    fail(res, e);
+  }
+}
+
+export async function recordEvent(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const id = req.params['id'] as string;
+    const data = await matchService.recordEvent(id, userId, req.body);
+    res.status(201).json({ status: 'success', data });
+  } catch (e) {
+    fail(res, e);
+  }
+}
+
+export async function undoLastEvent(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const id = req.params['id'] as string;
+    const data = await matchService.undoLastEvent(id, userId);
+    res.status(200).json({ status: 'success', data });
+  } catch (e) {
+    fail(res, e);
+  }
+}
+
+export async function archivePoint(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const id = req.params['id'] as string;
+    const data = await matchService.archivePoint(id, userId, req.body);
+    res.status(200).json({ status: 'success', data });
+  } catch (e) {
+    fail(res, e);
+  }
+}

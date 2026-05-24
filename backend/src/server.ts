@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
-import teamRoutes from './routes/teamRoutes';
+import teamRoutes, { teamExportRoutes } from './routes/teamRoutes';
 import { teamPlayerRoutes, playerRoutes } from './routes/playerRoutes';
 import {
   teamTournamentRoutes,
@@ -10,6 +10,7 @@ import {
 } from './routes/tournamentRoutes';
 import { teamMatchRoutes, matchRoutes } from './routes/matchRoutes';
 import importRouter from './routes/importRoutes';
+import settingsRoutes from './routes/settingsRoutes';
 
 dotenv.config();
 
@@ -28,11 +29,13 @@ app.use('/api/auth', authRoutes);
 app.use('/api/teams', teamPlayerRoutes);
 app.use('/api/teams', teamTournamentRoutes);
 app.use('/api/teams', teamMatchRoutes);
+app.use('/api/teams', teamExportRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/teams', importRouter);
+app.use('/api/me/settings', settingsRoutes);
 
 // --- Health Check ---
 app.get('/health', (_req: Request, res: Response) => {

@@ -67,3 +67,14 @@ export async function createMatch(data: {
 export async function deleteMatch(id: string) {
   return prisma.match.delete({ where: { id } });
 }
+
+export async function updateMatchStatus(
+  matchId: string,
+  status: MatchStatus,
+  finished: boolean,
+) {
+  return prisma.match.update({
+    where: { id: matchId },
+    data: { status, finished },
+  });
+}

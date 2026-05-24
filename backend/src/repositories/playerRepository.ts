@@ -1,10 +1,24 @@
 import { prisma } from '../lib/prisma';
 import type { PlayerPosition } from '../generated/prisma/enums';
 
-export async function findPlayersByTeam(teamId: string) {
+export async function findPlayersByTeam(
+  teamId: string,
+  filters?: { search?: string; position?: PlayerPosition },
+) {
   return prisma.player.findMany({
-    where: { teamId },
-    orderBy: [{ jerseyNumber: 'asc' }],
+    where: {
+      teamId,
+      ...(filters?.position ? { position: filters.position } : {}),
+      ...(filters?.search
+        ? {
+            OR: [
+              { firstName: { contains: filters.search, mode: 'insensitive' } },
+              { lastName: { contains: filters.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
   });
 }
 

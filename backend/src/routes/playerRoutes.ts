@@ -13,5 +13,7 @@ teamPlayerRoutes.get('/:teamId/leaderboard', playerController.leaderboard);
 
 export const playerRoutes = Router();
 playerRoutes.use(authMiddleware);
+playerRoutes.get('/:id/career', playerController.getCareerStats);
+playerRoutes.get('/:id/pass-network', playerController.getPassNetwork);
 playerRoutes.put('/:id', playerController.updatePlayer);
 playerRoutes.delete('/:id', playerController.deletePlayer);

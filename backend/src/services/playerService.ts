@@ -1,3 +1,4 @@
+import { prisma } from '../lib/prisma';
 import * as playerRepository from '../repositories/playerRepository';
 import { PlayerPosition } from '../generated/prisma/enums';
 import {
@@ -39,9 +40,18 @@ function normalizePosition(value: string): PlayerPosition {
   return up as PlayerPosition;
 }
 
-export async function listPlayers(teamId: string, userId: string) {
+export async function listPlayers(
+  teamId: string,
+  userId: string,
+  filters?: { search?: string; position?: string },
+) {
   await assertTeamOwnership(teamId, userId);
-  return playerRepository.findPlayersByTeam(teamId);
+  const resolvedPosition =
+    filters?.position ? normalizePosition(filters.position) : undefined;
+  return playerRepository.findPlayersByTeam(teamId, {
+    search: filters?.search,
+    position: resolvedPosition,
+  });
 }
 
 export async function createPlayer(
@@ -125,4 +135,113 @@ export async function updatePlayer(
 export async function deletePlayer(playerId: string, userId: string) {
   await assertPlayerOwnership(playerId, userId);
   return playerRepository.deletePlayer(playerId);
+}
+
+// ---------------------------------------------------------------------------
+// Career stats
+// ---------------------------------------------------------------------------
+
+function safeDivide(numerator: number, denominator: number): number {
+  return denominator === 0 ? 0 : Math.round((numerator / denominator) * 100) / 100;
+}
+
+export async function getCareerStats(playerId: string, userId: string): Promise<object> {
+  const player = await assertPlayerOwnership(playerId, userId);
+
+  const stats = await prisma.frisbeePlayerStat.findUnique({
+    where: { playerId },
+  });
+
+  const zero = {
+    goals: 0, assists: 0, blocks: 0, throwaways: 0,
+    drops: 0, callahans: 0, completions: 0, successfulPasses: 0,
+    pullAttempts: 0, successfulPulls: 0, plusMinus: 0,
+    matchesPlayed: 0, pointsPlayed: 0,
+  };
+
+  const totalStats = stats ?? { ...zero, id: '', playerId };
+
+  const mp = totalStats.matchesPlayed;
+  const pp = totalStats.pointsPlayed;
+
+  const perMatch = {
+    goals:          safeDivide(totalStats.goals, mp),
+    assists:        safeDivide(totalStats.assists, mp),
+    blocks:         safeDivide(totalStats.blocks, mp),
+    throwaways:     safeDivide(totalStats.throwaways, mp),
+    drops:          safeDivide(totalStats.drops, mp),
+    callahans:      safeDivide(totalStats.callahans, mp),
+    completions:    safeDivide(totalStats.completions, mp),
+    successfulPasses: safeDivide(totalStats.successfulPasses, mp),
+    plusMinus:      safeDivide(totalStats.plusMinus, mp),
+  };
+
+  const perPoint = {
+    goals:          safeDivide(totalStats.goals, pp),
+    assists:        safeDivide(totalStats.assists, pp),
+    blocks:         safeDivide(totalStats.blocks, pp),
+    throwaways:     safeDivide(totalStats.throwaways, pp),
+    drops:          safeDivide(totalStats.drops, pp),
+    callahans:      safeDivide(totalStats.callahans, pp),
+    completions:    safeDivide(totalStats.completions, pp),
+    successfulPasses: safeDivide(totalStats.successfulPasses, pp),
+    plusMinus:      safeDivide(totalStats.plusMinus, pp),
+  };
+
+  const teamAverages = await prisma.frisbeePlayerStat.aggregate({
+    where: { player: { teamId: player.teamId } },
+    _avg: {
+      goals: true,
+      assists: true,
+      blocks: true,
+      throwaways: true,
+      drops: true,
+      callahans: true,
+      completions: true,
+      successfulPasses: true,
+      plusMinus: true,
+      matchesPlayed: true,
+      pointsPlayed: true,
+    },
+  });
+
+  return {
+    player: {
+      id: player.id,
+      firstName: player.firstName,
+      lastName: player.lastName,
+      jerseyNumber: player.jerseyNumber,
+      position: player.position,
+    },
+    totalStats,
+    perMatch,
+    perPoint,
+    teamAverages: teamAverages._avg,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Pass network
+// ---------------------------------------------------------------------------
+
+export async function getPassNetwork(playerId: string, userId: string): Promise<object[]> {
+  await assertPlayerOwnership(playerId, userId);
+
+  const edges = await prisma.playerPassEdge.findMany({
+    where: { fromPlayerId: playerId },
+    include: {
+      toPlayer: {
+        select: { id: true, firstName: true, lastName: true, jerseyNumber: true },
+      },
+    },
+    orderBy: { count: 'desc' },
+    take: 6,
+  });
+
+  return edges.map((edge) => ({
+    toPlayerId:     edge.toPlayerId,
+    toPlayerName:   `${edge.toPlayer.firstName} ${edge.toPlayer.lastName}`,
+    jerseyNumber:   edge.toPlayer.jerseyNumber,
+    count:          edge.count,
+  }));
 }
