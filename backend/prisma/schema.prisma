@@ -207,18 +207,19 @@ model FrisbeePlayerStat {
 
 /// Pre-aggregated per-match statistics per player.
 model MatchPlayerStat {
-  id           String @id @default(cuid())
-  matchId      String
-  playerId     String
-  goals        Int    @default(0)
-  assists      Int    @default(0)
-  blocks       Int    @default(0)
-  throwaways   Int    @default(0)
-  drops        Int    @default(0)
-  callahans    Int    @default(0)
-  completions  Int    @default(0)
-  pointsPlayed Int    @default(0)
-  plusMinus    Int    @default(0)
+  id               String @id @default(cuid())
+  matchId          String
+  playerId         String
+  goals            Int    @default(0)
+  assists          Int    @default(0)
+  blocks           Int    @default(0)
+  throwaways       Int    @default(0)
+  drops            Int    @default(0)
+  callahans        Int    @default(0)
+  completions      Int    @default(0)
+  successfulPasses Int    @default(0)
+  pointsPlayed     Int    @default(0)
+  plusMinus        Int    @default(0)
 
   match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
@@ -258,19 +259,20 @@ model TournamentRosterPlayer {
 
 /// Pre-aggregated per-tournament statistics per player.
 model TournamentPlayerStat {
-  id            String @id @default(cuid())
-  tournamentId  String
-  playerId      String
-  goals         Int    @default(0)
-  assists       Int    @default(0)
-  blocks        Int    @default(0)
-  throwaways    Int    @default(0)
-  drops         Int    @default(0)
-  callahans     Int    @default(0)
-  completions   Int    @default(0)
-  matchesPlayed Int    @default(0)
-  pointsPlayed  Int    @default(0)
-  plusMinus     Int    @default(0)
+  id               String @id @default(cuid())
+  tournamentId     String
+  playerId         String
+  goals            Int    @default(0)
+  assists          Int    @default(0)
+  blocks           Int    @default(0)
+  throwaways       Int    @default(0)
+  drops            Int    @default(0)
+  callahans        Int    @default(0)
+  completions      Int    @default(0)
+  successfulPasses Int    @default(0)
+  matchesPlayed    Int    @default(0)
+  pointsPlayed     Int    @default(0)
+  plusMinus        Int    @default(0)
 
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   player     Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
