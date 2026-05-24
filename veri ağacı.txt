@@ -1,0 +1,58 @@
+📦 BEYONDFIELD DATABASE (PostgreSQL) (frizbi için tasarlanmıştır)
+
+├── 👤 KULLANICI YÖNETİMİ (User Management)
+│   ├── 📜 User (Kullanıcı Tablosu)
+│   │   ├── id, email, passwordHash, role (ADMIN/COACH/VIEWER), createdAt
+│   │   └── İlişkiler: ownedTeams (Team[])
+│   │
+│   └── 📜 UserSettings (Yeni! - doc'tan eklendi)
+│       ├── id, userId (Unique FK), theme, language, nameFormat, defaultCaptureMode
+│       └── createdAt, updatedAt
+│
+├── 🛡️ TAKIM & OYUNCU YÖNETİMİ (Core Domain)
+│   ├── 📜 Team (Takım Tablosu)
+│   │   ├── id, name, logoUrl (S3/R2), ownerId (FK), sportType (Kısıtlama: ULTIMATE_FRISBEE)
+│   │   └── İlişkiler: players[], tournaments[], homeMatches[], awayMatches[]
+│   │
+│   └── 📜 Player (Oyuncu Tablosu)
+│       ├── id, firstName, lastName, position, jerseyNumber, photoUrl (S3/R2), teamId (FK)
+│       └── İlişkiler: team, events[], stats[], matchStats[], tournamentStats[]
+│
+├── 🏆 TURNUVA YÖNETİMİ (Turnuvalar - Yeni!)
+│   ├── 📜 Tournament
+│   │   ├── id, name, ownerTeamId (FK), sportType, startDate, endDate, location
+│   │   └── İlişkiler: matches[], rosterPlayers[], tournamentStats[]
+│   │
+│   └── 📜 TournamentRosterPlayer (Turnuvaya Özel Kadro Tablosu)
+│       ├── id, tournamentId (FK), playerId (FK), jerseyOverride
+│       └── Unique Kısıtlama: (tournamentId, playerId)
+│
+├── 🏟️ MAÇ & OLAY YÖNETİMİ (Maçlar ve Canlı Takip)
+│   ├── 📜 Match
+│   │   ├── id, homeTeamId (FK), awayTeamId (FK), tournamentId (FK - Yeni!)
+│   │   ├── matchDate, status, sportType, homeScore, awayScore
+│   │   └── Yeni Eklenenler: youtubeVideoId, durationSeconds, finished (boolean)
+│   │
+│   └── 📜 FrisbeeMatchEvent (Ham Olay Kayıtları - Append Only / Sadece Ekleme)
+│       ├── id, matchId (FK), playerId (FK), actionType (Enum)
+│       ├── Yeni Eklenenler: secondaryPlayerId (Asist vb. FK), videoTimestampSeconds, period
+│       ├── Yeni Eklenenler: scoreUsAtEvent, scoreThemAtEvent, minute
+│       └── (Bu tablo maçın hikayesini tutar, asla frontend'de toplanmaz)
+│
+└── 📊 İSTATİSTİK & DENORMALİZASYON (Burası BeyondField'ın Kalbidir!)
+    │   Açıklama: Yeni event girildiğinde Backend Prisma Transaction ile bu tabloları günceller.
+    │   Frontend SADECE bu tabloları okur, asla matematiksel hesap yapmaz.
+    │
+    ├── 📜 FrisbeePlayerStat (Global Kariyer İstatistikleri)
+    │   ├── id, playerId (Unique FK)
+    │   ├── Mevcut: goals, assists, blocks, throwaways, drops, callahans, completions, matchesPlayed
+    │   └── Yeni!: pointsPlayed, successfulPasses, pullAttempts, successfulPulls, plusMinus
+    │
+    ├── 📜 TournamentPlayerStat (Yeni! - Turnuva Bazlı Ön-Hesaplanmış Veri)
+    │   └── id, tournamentId (FK), playerId (FK), goals, assists, blocks... (Tüm stat kolonları)
+    │
+    ├── 📜 MatchPlayerStat (Yeni! - Maç Bazlı Ön-Hesaplanmış Veri)
+    │   └── id, matchId (FK), playerId (FK), goals, assists, blocks... (Tüm stat kolonları)
+    │
+    └── 📜 PlayerPassEdge (Yeni! - Pas Ağı Radar Chart İçin)
+        └── id, fromPlayerId (FK), toPlayerId (FK), count (Int)
