@@ -1,10 +1,4 @@
-import 'dotenv/config';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../generated/prisma/client';
-
-const prisma = new PrismaClient({
-  adapter: new PrismaPg(process.env['DATABASE_URL'] as string),
-});
+import { prisma } from '../lib/prisma';
 
 export async function findTeamsByOwner(ownerId: string) {
   return prisma.team.findMany({

@@ -72,6 +72,7 @@
     "nav": {
       "dashboard": "Panel",
       "roster": "Kadro",
+      "tournaments": "Turnuvalar",
       "matches": "Maçlar",
       "settings": "Ayarlar"
     },
@@ -85,5 +86,169 @@
     "welcome": "Hoş geldin",
     "currentTeam": "Aktif Takım",
     "noStats": "Henüz istatistik yok. Maç verisi girildiğinde burada görünecek."
+  },
+  "common": {
+    "loading": "Yükleniyor...",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "confirm": "Onayla",
+    "close": "Kapat",
+    "actions": "İşlemler",
+    "saving": "Kaydediliyor...",
+    "deleting": "Siliniyor...",
+    "creating": "Oluşturuluyor...",
+    "noResults": "Sonuç yok",
+    "back": "Geri"
+  },
+  "roster": {
+    "title": "Kadro",
+    "tabs": {
+      "players": "Oyuncular",
+      "leaderboard": "Sıralama"
+    },
+    "fields": {
+      "firstName": "Ad",
+      "lastName": "Soyad",
+      "position": "Pozisyon",
+      "jerseyNumber": "Forma No",
+      "photoUrl": "Fotoğraf URL"
+    },
+    "positions": {
+      "HANDLER": "Handler",
+      "CUTTER": "Cutter",
+      "HYBRID": "Hibrit"
+    },
+    "table": {
+      "empty": "Henüz oyuncu yok. İlk oyuncuyu ekleyin.",
+      "addButton": "Oyuncu Ekle"
+    },
+    "modal": {
+      "add": {
+        "title": "Oyuncu Ekle",
+        "submit": "Ekle"
+      },
+      "edit": {
+        "title": "Oyuncu Düzenle",
+        "submit": "Kaydet"
+      },
+      "delete": {
+        "title": "Oyuncuyu Sil",
+        "message": "Bu oyuncuyu silmek istediğine emin misin?",
+        "confirm": "Sil"
+      }
+    },
+    "leaderboard": {
+      "sortBy": "Sırala",
+      "mode": "Mod",
+      "modes": {
+        "TOTAL": "Toplam",
+        "PER_MATCH": "Maç Başı",
+        "PER_POINT": "Sayı Başı"
+      },
+      "metrics": {
+        "goals": "Goller",
+        "assists": "Asistler",
+        "blocks": "Bloklar",
+        "throwaways": "Hatalı Atışlar",
+        "drops": "Düşürmeler",
+        "callahans": "Callahan",
+        "completions": "Tamamlanan",
+        "plusMinus": "+/-",
+        "pointsPlayed": "Oynanan Sayı",
+        "matchesPlayed": "Oynanan Maç"
+      },
+      "columns": {
+        "rank": "#",
+        "player": "Oyuncu",
+        "raw": "Ham",
+        "display": "Değer",
+        "matches": "Maç",
+        "points": "Sayı"
+      },
+      "empty": "Sıralama için henüz veri yok."
+    },
+    "errors": {
+      "loadFailed": "Oyuncular yüklenemedi",
+      "saveFailed": "Oyuncu kaydedilemedi",
+      "deleteFailed": "Oyuncu silinemedi",
+      "leaderboardFailed": "Sıralama yüklenemedi"
+    }
+  },
+  "tournaments": {
+    "list": {
+      "title": "Turnuvalar",
+      "empty": "Henüz turnuva yok. İlkini oluştur.",
+      "createButton": "Yeni Turnuva"
+    },
+    "fields": {
+      "name": "Ad",
+      "startDate": "Başlangıç",
+      "endDate": "Bitiş",
+      "location": "Konum"
+    },
+    "modal": {
+      "create": {
+        "title": "Yeni Turnuva",
+        "submit": "Oluştur"
+      },
+      "delete": {
+        "title": "Turnuvayı Sil",
+        "message": "Bu turnuvayı silmek istediğine emin misin?",
+        "confirm": "Sil"
+      }
+    },
+    "errors": {
+      "loadFailed": "Turnuvalar yüklenemedi",
+      "createFailed": "Turnuva oluşturulamadı",
+      "deleteFailed": "Turnuva silinemedi"
+    }
+  },
+  "matches": {
+    "list": {
+      "title": "Maçlar",
+      "empty": "Henüz maç yok. İlk maçı oluştur.",
+      "createButton": "Yeni Maç",
+      "columns": {
+        "date": "Tarih",
+        "home": "Ev Sahibi",
+        "away": "Deplasman",
+        "score": "Skor",
+        "tournament": "Turnuva",
+        "status": "Durum"
+      }
+    },
+    "modal": {
+      "create": {
+        "title": "Yeni Maç",
+        "homeTeam": "Ev Sahibi Takım",
+        "awayTeam": "Rakip Takım",
+        "opponentHint": "Rakip için takım listesinden bir takım seç. Rakip kulübü temsil eden takımı önceden oluşturman gerekebilir.",
+        "tournament": "Turnuva (opsiyonel)",
+        "tournamentNone": "Yok",
+        "matchDate": "Tarih ve Saat",
+        "submit": "Oluştur"
+      }
+    },
+    "detail": {
+      "title": "Maç Detayı",
+      "trackLive": "Canlı Takibe Başla",
+      "noEvents": "Henüz olay yok. Canlı takibi başlat.",
+      "noStats": "Henüz istatistik yok.",
+      "eventsTitle": "Olay Akışı",
+      "statsTitle": "Oyuncu İstatistikleri",
+      "vs": "vs"
+    },
+    "status": {
+      "SCHEDULED": "Planlandı",
+      "IN_PROGRESS": "Devam Ediyor",
+      "FINISHED": "Tamamlandı"
+    },
+    "errors": {
+      "loadFailed": "Maçlar yüklenemedi",
+      "createFailed": "Maç oluşturulamadı",
+      "detailFailed": "Maç yüklenemedi"
+    }
   }
 }

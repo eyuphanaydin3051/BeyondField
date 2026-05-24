@@ -5,15 +5,16 @@ import { useAppStore } from '../store/appStore'
 
 interface NavItem {
   to: string
-  key: 'dashboard' | 'roster' | 'matches' | 'settings'
+  key: 'dashboard' | 'roster' | 'tournaments' | 'matches' | 'settings'
   icon: string
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', key: 'dashboard', icon: '📊' },
-  { to: '/roster', key: 'roster', icon: '👥' },
-  { to: '/matches', key: 'matches', icon: '🏟️' },
-  { to: '/settings', key: 'settings', icon: '⚙️' },
+  { to: '/', key: 'dashboard', icon: '#' },
+  { to: '/roster', key: 'roster', icon: '#' },
+  { to: '/tournaments', key: 'tournaments', icon: '#' },
+  { to: '/matches', key: 'matches', icon: '#' },
+  { to: '/settings', key: 'settings', icon: '#' },
 ]
 
 export default function Layout() {

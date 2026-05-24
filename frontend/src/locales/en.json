@@ -72,6 +72,7 @@
     "nav": {
       "dashboard": "Dashboard",
       "roster": "Roster",
+      "tournaments": "Tournaments",
       "matches": "Matches",
       "settings": "Settings"
     },
@@ -85,5 +86,169 @@
     "welcome": "Welcome",
     "currentTeam": "Active Team",
     "noStats": "No stats yet. They will appear here once match data is entered."
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "close": "Close",
+    "actions": "Actions",
+    "saving": "Saving...",
+    "deleting": "Deleting...",
+    "creating": "Creating...",
+    "noResults": "No results",
+    "back": "Back"
+  },
+  "roster": {
+    "title": "Roster",
+    "tabs": {
+      "players": "Players",
+      "leaderboard": "Leaderboard"
+    },
+    "fields": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "position": "Position",
+      "jerseyNumber": "Jersey #",
+      "photoUrl": "Photo URL"
+    },
+    "positions": {
+      "HANDLER": "Handler",
+      "CUTTER": "Cutter",
+      "HYBRID": "Hybrid"
+    },
+    "table": {
+      "empty": "No players yet. Add the first player.",
+      "addButton": "Add Player"
+    },
+    "modal": {
+      "add": {
+        "title": "Add Player",
+        "submit": "Add"
+      },
+      "edit": {
+        "title": "Edit Player",
+        "submit": "Save"
+      },
+      "delete": {
+        "title": "Delete Player",
+        "message": "Are you sure you want to delete this player?",
+        "confirm": "Delete"
+      }
+    },
+    "leaderboard": {
+      "sortBy": "Sort by",
+      "mode": "Mode",
+      "modes": {
+        "TOTAL": "Total",
+        "PER_MATCH": "Per Match",
+        "PER_POINT": "Per Point"
+      },
+      "metrics": {
+        "goals": "Goals",
+        "assists": "Assists",
+        "blocks": "Blocks",
+        "throwaways": "Throwaways",
+        "drops": "Drops",
+        "callahans": "Callahans",
+        "completions": "Completions",
+        "plusMinus": "+/-",
+        "pointsPlayed": "Points Played",
+        "matchesPlayed": "Matches Played"
+      },
+      "columns": {
+        "rank": "#",
+        "player": "Player",
+        "raw": "Raw",
+        "display": "Value",
+        "matches": "M",
+        "points": "P"
+      },
+      "empty": "No leaderboard data yet."
+    },
+    "errors": {
+      "loadFailed": "Could not load players",
+      "saveFailed": "Could not save player",
+      "deleteFailed": "Could not delete player",
+      "leaderboardFailed": "Could not load leaderboard"
+    }
+  },
+  "tournaments": {
+    "list": {
+      "title": "Tournaments",
+      "empty": "No tournaments yet. Create your first one.",
+      "createButton": "New Tournament"
+    },
+    "fields": {
+      "name": "Name",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "location": "Location"
+    },
+    "modal": {
+      "create": {
+        "title": "New Tournament",
+        "submit": "Create"
+      },
+      "delete": {
+        "title": "Delete Tournament",
+        "message": "Are you sure you want to delete this tournament?",
+        "confirm": "Delete"
+      }
+    },
+    "errors": {
+      "loadFailed": "Could not load tournaments",
+      "createFailed": "Could not create tournament",
+      "deleteFailed": "Could not delete tournament"
+    }
+  },
+  "matches": {
+    "list": {
+      "title": "Matches",
+      "empty": "No matches yet. Create the first one.",
+      "createButton": "New Match",
+      "columns": {
+        "date": "Date",
+        "home": "Home",
+        "away": "Away",
+        "score": "Score",
+        "tournament": "Tournament",
+        "status": "Status"
+      }
+    },
+    "modal": {
+      "create": {
+        "title": "New Match",
+        "homeTeam": "Home Team",
+        "awayTeam": "Opponent Team",
+        "opponentHint": "Pick the opponent from your teams list. You may need to create a team that represents the opposing club first.",
+        "tournament": "Tournament (optional)",
+        "tournamentNone": "None",
+        "matchDate": "Date & Time",
+        "submit": "Create"
+      }
+    },
+    "detail": {
+      "title": "Match Detail",
+      "trackLive": "Start Live Tracking",
+      "noEvents": "No events yet. Start live tracking.",
+      "noStats": "No stats yet.",
+      "eventsTitle": "Event Timeline",
+      "statsTitle": "Player Stats",
+      "vs": "vs"
+    },
+    "status": {
+      "SCHEDULED": "Scheduled",
+      "IN_PROGRESS": "In Progress",
+      "FINISHED": "Finished"
+    },
+    "errors": {
+      "loadFailed": "Could not load matches",
+      "createFailed": "Could not create match",
+      "detailFailed": "Could not load match"
+    }
   }
 }
