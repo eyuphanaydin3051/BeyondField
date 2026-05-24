@@ -9,6 +9,7 @@ import {
   tournamentRoutes,
 } from './routes/tournamentRoutes';
 import { teamMatchRoutes, matchRoutes } from './routes/matchRoutes';
+import importRouter from './routes/importRoutes';
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/matches', matchRoutes);
+app.use('/api/teams', importRouter);
 
 // --- Health Check ---
 app.get('/health', (_req: Request, res: Response) => {

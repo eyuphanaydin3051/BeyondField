@@ -16,7 +16,8 @@ function err(status: number, message: string): AppError {
 
 export interface CreateMatchInput {
   homeTeamId: string;
-  awayTeamId: string;
+  awayTeamId?: string | null;
+  opponentName?: string | null;
   tournamentId?: string | null;
   matchDate: string;
 }
@@ -32,17 +33,6 @@ export async function listMatches(teamId: string, userId: string) {
   return matchRepository.findMatchesByTeam(teamId);
 }
 
-/**
- * Creates a match between two teams.
- *
- * DECISION (Step 4 / opponent team workaround):
- *   The schema models matches as Team↔Team, but in this phase users only own
- *   teams they personally created. We therefore require BOTH `homeTeamId` and
- *   `awayTeamId` to belong to the requesting user. End users that want to
- *   record a match against another club must first create a lightweight
- *   "Opponent: ClubName" team via the Team CRUD. A future migration may add
- *   a dedicated `opponentName` text column or a team-membership join table.
- */
 export async function createMatch(
   teamId: string,
   userId: string,
@@ -50,24 +40,28 @@ export async function createMatch(
 ) {
   await assertTeamOwnership(teamId, userId);
 
-  if (!input.homeTeamId || !input.awayTeamId) {
-    throw err(400, 'homeTeamId and awayTeamId are required');
+  if (!input.homeTeamId) throw err(400, 'homeTeamId is required');
+  if (input.homeTeamId !== teamId) throw err(400, 'homeTeamId must match the path teamId');
+
+  const hasRegisteredOpponent = Boolean(input.awayTeamId);
+  const hasExternalOpponent = Boolean(input.opponentName?.trim());
+
+  if (!hasRegisteredOpponent && !hasExternalOpponent) {
+    throw err(400, 'Either awayTeamId or opponentName is required');
   }
-  if (input.homeTeamId === input.awayTeamId) {
-    throw err(400, 'homeTeamId and awayTeamId must differ');
+  if (hasRegisteredOpponent && hasExternalOpponent) {
+    throw err(400, 'Provide either awayTeamId or opponentName, not both');
   }
-  if (input.homeTeamId !== teamId && input.awayTeamId !== teamId) {
-    throw err(400, 'One of the teams must be the path teamId');
+
+  if (hasRegisteredOpponent) {
+    if (input.awayTeamId === input.homeTeamId) {
+      throw err(400, 'homeTeamId and awayTeamId must differ');
+    }
+    await assertTeamOwnership(input.awayTeamId!, userId);
   }
-  // Validate ownership for BOTH teams.
-  await assertTeamOwnership(input.homeTeamId, userId);
-  await assertTeamOwnership(input.awayTeamId, userId);
 
   if (input.tournamentId) {
-    const tournament = await assertTournamentOwnership(
-      input.tournamentId,
-      userId,
-    );
+    const tournament = await assertTournamentOwnership(input.tournamentId, userId);
     if (tournament.ownerTeamId !== teamId) {
       throw err(400, 'Tournament does not belong to this team');
     }
@@ -76,7 +70,8 @@ export async function createMatch(
 
   return matchRepository.createMatch({
     homeTeamId: input.homeTeamId,
-    awayTeamId: input.awayTeamId,
+    awayTeamId: hasRegisteredOpponent ? input.awayTeamId : null,
+    opponentName: hasExternalOpponent ? input.opponentName!.trim() : null,
     tournamentId: input.tournamentId ?? null,
     matchDate: parseDate(input.matchDate, 'matchDate'),
   });

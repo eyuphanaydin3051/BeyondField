@@ -85,7 +85,20 @@
     "title": "Panel",
     "welcome": "Hoş geldin",
     "currentTeam": "Aktif Takım",
-    "noStats": "Henüz istatistik yok. Maç verisi girildiğinde burada görünecek."
+    "noStats": "Henüz istatistik yok. Maç verisi girildiğinde burada görünecek.",
+    "nextMatch": "Yaklaşan Maç",
+    "viewMatch": "Maça Git",
+    "unknownOpponent": "Bilinmeyen Rakip",
+    "gettingStarted": "Başlamak için bir oyuncu ekle veya ilk maçını oluştur.",
+    "addFirstPlayer": "Oyuncu Ekle",
+    "createFirstMatch": "Maç Oluştur",
+    "stats": {
+      "players": "Oyuncular",
+      "matches": "Maçlar",
+      "tournaments": "Turnuvalar",
+      "nextMatch": "Yaklaşan Maç",
+      "noUpcoming": "Yok"
+    }
   },
   "common": {
     "loading": "Yükleniyor...",
@@ -177,6 +190,11 @@
     }
   },
   "tournaments": {
+    "status": {
+      "upcoming": "Yakında",
+      "active": "Devam Ediyor",
+      "past": "Tamamlandı"
+    },
     "list": {
       "title": "Turnuvalar",
       "empty": "Henüz turnuva yok. İlkini oluştur.",
@@ -205,6 +223,28 @@
       "deleteFailed": "Turnuva silinemedi"
     }
   },
+  "settings": {
+    "title": "Ayarlar",
+    "sections": {
+      "general": "Genel",
+      "dataManagement": "Veri Yönetimi"
+    },
+    "language": {
+      "label": "Dil",
+      "tr": "Türkçe",
+      "en": "İngilizce"
+    },
+    "import": {
+      "title": "DiscBase'den Aktar",
+      "description": "Eski DiscBase yedek dosyanızı yükleyerek oyuncularınızı aktarın.",
+      "selectFile": "Dosya Seç",
+      "noFile": "Dosya seçilmedi",
+      "submit": "Aktar",
+      "importing": "Aktarılıyor...",
+      "success": "{{imported}} oyuncu aktarıldı, {{skipped}} atlandı.",
+      "error": "Aktarım başarısız"
+    }
+  },
   "matches": {
     "list": {
       "title": "Maçlar",
@@ -224,7 +264,14 @@
         "title": "Yeni Maç",
         "homeTeam": "Ev Sahibi Takım",
         "awayTeam": "Rakip Takım",
-        "opponentHint": "Rakip için takım listesinden bir takım seç. Rakip kulübü temsil eden takımı önceden oluşturman gerekebilir.",
+        "opponentType": {
+          "label": "Rakip Türü",
+          "registered": "Kayıtlı Takım",
+          "external": "Dış Rakip"
+        },
+        "opponentName": "Rakip Adı",
+        "opponentNamePlaceholder": "Örn. Başka Kulüp",
+        "opponentHint": "Rakibi listeden seç ya da sadece ismini gir.",
         "tournament": "Turnuva (opsiyonel)",
         "tournamentNone": "Yok",
         "matchDate": "Tarih ve Saat",

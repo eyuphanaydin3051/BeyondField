@@ -145,7 +145,8 @@ model Player {
 model Match {
   id              String      @id @default(cuid())
   homeTeamId      String
-  awayTeamId      String
+  awayTeamId      String?
+  opponentName    String?
   tournamentId    String?
   matchDate       DateTime
   status          MatchStatus
@@ -158,7 +159,7 @@ model Match {
   createdAt       DateTime    @default(now())
 
   homeTeam    Team                @relation("HomeMatches", fields: [homeTeamId], references: [id], onDelete: Cascade)
-  awayTeam    Team                @relation("AwayMatches", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  awayTeam    Team?               @relation("AwayMatches", fields: [awayTeamId], references: [id], onDelete: SetNull)
   tournament  Tournament?         @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
   events      FrisbeeMatchEvent[]
   playerStats MatchPlayerStat[]

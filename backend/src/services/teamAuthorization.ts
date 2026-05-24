@@ -46,8 +46,8 @@ export async function assertMatchOwnership(matchId: string, userId: string) {
     include: { homeTeam: true, awayTeam: true },
   });
   if (!match) throw err(404, 'Match not found');
-  if (match.homeTeam.ownerId !== userId && match.awayTeam.ownerId !== userId) {
-    throw err(403, 'Forbidden');
-  }
+  const homeOwns = match.homeTeam.ownerId === userId;
+  const awayOwns = match.awayTeam?.ownerId === userId;
+  if (!homeOwns && !awayOwns) throw err(403, 'Forbidden');
   return match;
 }

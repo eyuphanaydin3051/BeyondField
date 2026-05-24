@@ -51,7 +51,8 @@ export async function findPlayerStatsByMatch(matchId: string) {
 
 export async function createMatch(data: {
   homeTeamId: string;
-  awayTeamId: string;
+  awayTeamId?: string | null;
+  opponentName?: string | null;
   tournamentId: string | null;
   matchDate: Date;
 }) {

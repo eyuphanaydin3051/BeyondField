@@ -18,65 +18,41 @@ import type {
   PlayerPosition,
 } from '../types'
 
-interface ErrorResponse {
-  status: 'error'
-  message: string
-}
+interface ErrorResponse { status: 'error'; message: string }
 
 type Tab = 'players' | 'leaderboard'
-
 const POSITIONS: PlayerPosition[] = ['HANDLER', 'CUTTER', 'HYBRID']
-
 const LEADERBOARD_METRICS: LeaderboardSortBy[] = [
-  'goals',
-  'assists',
-  'blocks',
-  'throwaways',
-  'drops',
-  'callahans',
-  'completions',
-  'plusMinus',
-  'pointsPlayed',
-  'matchesPlayed',
+  'goals', 'assists', 'blocks', 'throwaways', 'drops',
+  'callahans', 'completions', 'plusMinus', 'pointsPlayed', 'matchesPlayed',
 ]
-
 const LEADERBOARD_MODES: LeaderboardMode[] = ['TOTAL', 'PER_MATCH', 'PER_POINT']
 
-interface PlayerFormState {
-  firstName: string
-  lastName: string
-  position: PlayerPosition
-  jerseyNumber: string
-  photoUrl: string
+const POSITION_COLORS: Record<PlayerPosition, string> = {
+  HANDLER: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  CUTTER: 'bg-green-500/20 text-green-300 border-green-500/30',
+  HYBRID: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
 }
 
-const emptyForm: PlayerFormState = {
-  firstName: '',
-  lastName: '',
-  position: 'HYBRID',
-  jerseyNumber: '',
-  photoUrl: '',
+interface PlayerFormState {
+  firstName: string; lastName: string; position: PlayerPosition
+  jerseyNumber: string; photoUrl: string
 }
+const emptyForm: PlayerFormState = { firstName: '', lastName: '', position: 'HYBRID', jerseyNumber: '', photoUrl: '' }
 
 export default function Roster() {
   const { t } = useTranslation()
   const selectedTeam = useAppStore((s) => s.selectedTeam)
-
   const [tab, setTab] = useState<Tab>('players')
-
-  // ---- Players state ----
   const [players, setPlayers] = useState<Player[]>([])
   const [playersLoading, setPlayersLoading] = useState(true)
   const [playersError, setPlayersError] = useState<string | null>(null)
-
   const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<PlayerFormState>(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-
-  // ---- Leaderboard state ----
   const [sortBy, setSortBy] = useState<LeaderboardSortBy>('goals')
   const [mode, setMode] = useState<LeaderboardMode>('TOTAL')
   const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null)
@@ -87,150 +63,95 @@ export default function Roster() {
 
   const loadPlayers = useCallback(async () => {
     if (!teamId) return
-    setPlayersLoading(true)
-    setPlayersError(null)
+    setPlayersLoading(true); setPlayersError(null)
     try {
-      const res = await apiClient.get<{ status: 'success'; data: Player[] }>(
-        `/api/teams/${teamId}/players`,
-      )
+      const res = await apiClient.get<{ status: 'success'; data: Player[] }>(`/api/teams/${teamId}/players`)
       setPlayers(res.data.data)
     } catch (err) {
       const ax = err as AxiosError<ErrorResponse>
       setPlayersError(ax.response?.data?.message ?? t('roster.errors.loadFailed'))
-    } finally {
-      setPlayersLoading(false)
-    }
+    } finally { setPlayersLoading(false) }
   }, [teamId, t])
 
   const loadLeaderboard = useCallback(async () => {
     if (!teamId) return
-    setLeaderboardLoading(true)
-    setLeaderboardError(null)
+    setLeaderboardLoading(true); setLeaderboardError(null)
     try {
-      const res = await apiClient.get<{
-        status: 'success'
-        data: LeaderboardResponse
-      }>(`/api/teams/${teamId}/leaderboard`, {
-        params: { sortBy, mode },
-      })
+      const res = await apiClient.get<{ status: 'success'; data: LeaderboardResponse }>(
+        `/api/teams/${teamId}/leaderboard`, { params: { sortBy, mode } }
+      )
       setLeaderboard(res.data.data)
     } catch (err) {
       const ax = err as AxiosError<ErrorResponse>
-      setLeaderboardError(
-        ax.response?.data?.message ?? t('roster.errors.leaderboardFailed'),
-      )
-    } finally {
-      setLeaderboardLoading(false)
-    }
+      setLeaderboardError(ax.response?.data?.message ?? t('roster.errors.leaderboardFailed'))
+    } finally { setLeaderboardLoading(false) }
   }, [teamId, sortBy, mode, t])
 
-  useEffect(() => {
-    loadPlayers()
-  }, [loadPlayers])
+  useEffect(() => { loadPlayers() }, [loadPlayers])
+  useEffect(() => { if (tab === 'leaderboard') loadLeaderboard() }, [tab, loadLeaderboard])
 
-  useEffect(() => {
-    if (tab === 'leaderboard') loadLeaderboard()
-  }, [tab, loadLeaderboard])
-
-  const openAdd = () => {
-    setForm(emptyForm)
-    setEditingId(null)
-    setFormError(null)
-    setModalMode('add')
-  }
-
+  const openAdd = () => { setForm(emptyForm); setEditingId(null); setFormError(null); setModalMode('add') }
   const openEdit = (p: Player) => {
-    setForm({
-      firstName: p.firstName,
-      lastName: p.lastName,
-      position: p.position,
-      jerseyNumber: String(p.jerseyNumber),
-      photoUrl: p.photoUrl ?? '',
-    })
-    setEditingId(p.id)
-    setFormError(null)
-    setModalMode('edit')
+    setForm({ firstName: p.firstName, lastName: p.lastName, position: p.position,
+      jerseyNumber: String(p.jerseyNumber), photoUrl: p.photoUrl ?? '' })
+    setEditingId(p.id); setFormError(null); setModalMode('edit')
   }
-
-  const closeModal = () => {
-    setModalMode(null)
-    setEditingId(null)
-    setForm(emptyForm)
-    setFormError(null)
-  }
+  const closeModal = () => { setModalMode(null); setEditingId(null); setForm(emptyForm); setFormError(null) }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!teamId) return
-    setSubmitting(true)
-    setFormError(null)
+    setSubmitting(true); setFormError(null)
     const payload = {
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      position: form.position,
-      jerseyNumber: Number(form.jerseyNumber),
+      firstName: form.firstName.trim(), lastName: form.lastName.trim(),
+      position: form.position, jerseyNumber: Number(form.jerseyNumber),
       photoUrl: form.photoUrl.trim() || null,
     }
     try {
-      if (modalMode === 'add') {
-        await apiClient.post(`/api/teams/${teamId}/players`, payload)
-      } else if (modalMode === 'edit' && editingId) {
-        await apiClient.put(`/api/players/${editingId}`, payload)
-      }
-      closeModal()
-      await loadPlayers()
+      if (modalMode === 'add') await apiClient.post(`/api/teams/${teamId}/players`, payload)
+      else if (modalMode === 'edit' && editingId) await apiClient.put(`/api/players/${editingId}`, payload)
+      closeModal(); await loadPlayers()
     } catch (err) {
       const ax = err as AxiosError<ErrorResponse>
       setFormError(ax.response?.data?.message ?? t('roster.errors.saveFailed'))
-    } finally {
-      setSubmitting(false)
-    }
+    } finally { setSubmitting(false) }
   }
 
   const handleDelete = async (id: string) => {
     if (!window.confirm(t('roster.modal.delete.message'))) return
     setDeletingId(id)
-    try {
-      await apiClient.delete(`/api/players/${id}`)
-      await loadPlayers()
-    } catch (err) {
+    try { await apiClient.delete(`/api/players/${id}`); await loadPlayers() }
+    catch (err) {
       const ax = err as AxiosError<ErrorResponse>
       alert(ax.response?.data?.message ?? t('roster.errors.deleteFailed'))
-    } finally {
-      setDeletingId(null)
-    }
+    } finally { setDeletingId(null) }
   }
 
-  const tabBtnCls = (active: boolean) =>
-    [
-      'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-      active
-        ? 'bg-violet-600 text-white'
-        : 'bg-gray-800 text-gray-300 hover:bg-gray-700',
-    ].join(' ')
+  const tabBtnCls = (active: boolean) => [
+    'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+    active ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700',
+  ].join(' ')
 
-  const formatDisplay = useMemo(
-    () => (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2)),
-    [],
-  )
+  const formatDisplay = useMemo(() => (n: number) => Number.isInteger(n) ? String(n) : n.toFixed(2), [])
+
+  const rankColors = ['text-yellow-400', 'text-gray-300', 'text-amber-600']
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t('roster.title')}</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">{t('roster.title')}</h1>
+          {!playersLoading && (
+            <span className="px-2.5 py-0.5 bg-gray-800 rounded-full text-xs text-gray-400 font-mono">
+              {players.length}
+            </span>
+          )}
+        </div>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setTab('players')}
-            className={tabBtnCls(tab === 'players')}
-          >
+          <button type="button" onClick={() => setTab('players')} className={tabBtnCls(tab === 'players')}>
             {t('roster.tabs.players')}
           </button>
-          <button
-            type="button"
-            onClick={() => setTab('leaderboard')}
-            className={tabBtnCls(tab === 'leaderboard')}
-          >
+          <button type="button" onClick={() => setTab('leaderboard')} className={tabBtnCls(tab === 'leaderboard')}>
             {t('roster.tabs.leaderboard')}
           </button>
         </div>
@@ -239,32 +160,32 @@ export default function Roster() {
       {tab === 'players' && (
         <section className="space-y-4">
           <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={openAdd}
-              className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg font-semibold"
-            >
-              {t('roster.table.addButton')}
+            <button type="button" onClick={openAdd}
+              className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg font-semibold text-sm transition-colors">
+              + {t('roster.table.addButton')}
             </button>
           </div>
 
-          {playersLoading && (
-            <p className="text-gray-400 text-center py-8">{t('common.loading')}</p>
-          )}
+          {playersLoading && <p className="text-gray-400 text-center py-8">{t('common.loading')}</p>}
           {playersError && !playersLoading && (
-            <div className="px-4 py-3 bg-red-900/40 border border-red-700/60 rounded-lg text-red-400 text-center">
-              {playersError}
-            </div>
+            <div className="px-4 py-3 bg-red-900/40 border border-red-700/60 rounded-lg text-red-400 text-center">{playersError}</div>
           )}
           {!playersLoading && !playersError && players.length === 0 && (
-            <p className="text-gray-500 text-center py-12">{t('roster.table.empty')}</p>
+            <div className="py-16 text-center">
+              <div className="text-4xl mb-3">👤</div>
+              <p className="text-gray-500 mb-4">{t('roster.table.empty')}</p>
+              <button type="button" onClick={openAdd}
+                className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg font-semibold text-sm transition-colors">
+                {t('roster.table.addButton')}
+              </button>
+            </div>
           )}
           {!playersLoading && !playersError && players.length > 0 && (
             <div className="overflow-x-auto rounded-xl border border-gray-800">
               <table className="w-full text-left">
-                <thead className="bg-gray-900 text-gray-400 text-sm">
+                <thead className="bg-gray-900 text-gray-500 text-xs uppercase tracking-wider">
                   <tr>
-                    <th className="px-4 py-3">{t('roster.fields.jerseyNumber')}</th>
+                    <th className="px-4 py-3 w-16">#</th>
                     <th className="px-4 py-3">{t('roster.fields.firstName')}</th>
                     <th className="px-4 py-3">{t('roster.fields.lastName')}</th>
                     <th className="px-4 py-3">{t('roster.fields.position')}</th>
@@ -273,27 +194,26 @@ export default function Roster() {
                 </thead>
                 <tbody className="divide-y divide-gray-800">
                   {players.map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-900">
-                      <td className="px-4 py-3 font-mono">{p.jerseyNumber}</td>
-                      <td className="px-4 py-3">{p.firstName}</td>
-                      <td className="px-4 py-3">{p.lastName}</td>
+                    <tr key={p.id} className="hover:bg-gray-900/50 transition-colors">
                       <td className="px-4 py-3">
-                        {t(`roster.positions.${p.position}`)}
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 font-mono text-sm font-bold text-gray-300">
+                          {p.jerseyNumber}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-right space-x-2">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(p)}
-                          className="text-violet-300 hover:text-white text-sm"
-                        >
+                      <td className="px-4 py-3 font-medium">{p.firstName}</td>
+                      <td className="px-4 py-3 font-medium">{p.lastName}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${POSITION_COLORS[p.position]}`}>
+                          {t(`roster.positions.${p.position}`)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-3">
+                        <button type="button" onClick={() => openEdit(p)}
+                          className="text-violet-400 hover:text-white text-sm transition-colors">
                           {t('common.edit')}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(p.id)}
-                          disabled={deletingId === p.id}
-                          className="text-red-400 hover:text-red-200 text-sm disabled:opacity-50"
-                        >
+                        <button type="button" onClick={() => handleDelete(p.id)} disabled={deletingId === p.id}
+                          className="text-red-400 hover:text-red-200 text-sm disabled:opacity-50 transition-colors">
                           {deletingId === p.id ? t('common.deleting') : t('common.delete')}
                         </button>
                       </td>
@@ -308,84 +228,69 @@ export default function Roster() {
 
       {tab === 'leaderboard' && (
         <section className="space-y-4">
-          <div className="flex flex-wrap gap-3 items-center">
-            <label className="text-sm text-gray-400">
-              {t('roster.leaderboard.sortBy')}:{' '}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as LeaderboardSortBy)}
-                className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-white"
-              >
+          <div className="flex flex-wrap gap-3 items-center p-4 bg-gray-900 border border-gray-800 rounded-xl">
+            <label className="flex items-center gap-2 text-sm text-gray-400">
+              {t('roster.leaderboard.sortBy')}
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as LeaderboardSortBy)}
+                className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-white text-sm">
                 {LEADERBOARD_METRICS.map((m) => (
-                  <option key={m} value={m}>
-                    {t(`roster.leaderboard.metrics.${m}`)}
-                  </option>
+                  <option key={m} value={m}>{t(`roster.leaderboard.metrics.${m}`)}</option>
                 ))}
               </select>
             </label>
-            <label className="text-sm text-gray-400">
-              {t('roster.leaderboard.mode')}:{' '}
-              <select
-                value={mode}
-                onChange={(e) => setMode(e.target.value as LeaderboardMode)}
-                className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-white"
-              >
+            <label className="flex items-center gap-2 text-sm text-gray-400">
+              {t('roster.leaderboard.mode')}
+              <select value={mode} onChange={(e) => setMode(e.target.value as LeaderboardMode)}
+                className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-white text-sm">
                 {LEADERBOARD_MODES.map((m) => (
-                  <option key={m} value={m}>
-                    {t(`roster.leaderboard.modes.${m}`)}
-                  </option>
+                  <option key={m} value={m}>{t(`roster.leaderboard.modes.${m}`)}</option>
                 ))}
               </select>
             </label>
           </div>
 
-          {leaderboardLoading && (
-            <p className="text-gray-400 text-center py-8">{t('common.loading')}</p>
-          )}
+          {leaderboardLoading && <p className="text-gray-400 text-center py-8">{t('common.loading')}</p>}
           {leaderboardError && !leaderboardLoading && (
-            <div className="px-4 py-3 bg-red-900/40 border border-red-700/60 rounded-lg text-red-400 text-center">
-              {leaderboardError}
-            </div>
+            <div className="px-4 py-3 bg-red-900/40 border border-red-700/60 rounded-lg text-red-400 text-center">{leaderboardError}</div>
           )}
           {!leaderboardLoading && !leaderboardError && leaderboard && (
             <div className="overflow-x-auto rounded-xl border border-gray-800">
               <table className="w-full text-left">
-                <thead className="bg-gray-900 text-gray-400 text-sm">
+                <thead className="bg-gray-900 text-gray-500 text-xs uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-3 w-12">{t('roster.leaderboard.columns.rank')}</th>
                     <th className="px-4 py-3">{t('roster.leaderboard.columns.player')}</th>
                     <th className="px-4 py-3 text-right">{t('roster.leaderboard.columns.display')}</th>
-                    <th className="px-4 py-3 text-right">{t('roster.leaderboard.columns.raw')}</th>
-                    <th className="px-4 py-3 text-right">{t('roster.leaderboard.columns.matches')}</th>
-                    <th className="px-4 py-3 text-right">{t('roster.leaderboard.columns.points')}</th>
+                    <th className="px-4 py-3 text-right hidden sm:table-cell">{t('roster.leaderboard.columns.raw')}</th>
+                    <th className="px-4 py-3 text-right hidden sm:table-cell">{t('roster.leaderboard.columns.matches')}</th>
+                    <th className="px-4 py-3 text-right hidden sm:table-cell">{t('roster.leaderboard.columns.points')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
                   {leaderboard.rows.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                        {t('roster.leaderboard.empty')}
-                      </td>
-                    </tr>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">{t('roster.leaderboard.empty')}</td></tr>
                   )}
                   {leaderboard.rows.map((row, idx) => (
-                    <tr key={row.playerId} className="hover:bg-gray-900">
-                      <td className="px-4 py-3 font-mono text-gray-500">{idx + 1}</td>
+                    <tr key={row.playerId} className={`hover:bg-gray-900/50 transition-colors ${idx < 3 ? 'bg-gray-900/30' : ''}`}>
                       <td className="px-4 py-3">
-                        #{row.jerseyNumber} {row.firstName} {row.lastName}
+                        <span className={`font-bold text-lg ${rankColors[idx] ?? 'text-gray-600'}`}>
+                          {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-800 font-mono text-xs text-gray-400">
+                            {row.jerseyNumber}
+                          </span>
+                          <span className="font-medium">{row.firstName} {row.lastName}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-violet-300 font-bold text-lg">
                         {formatDisplay(row.displayValue)}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-500">
-                        {row.rawValue}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-500">
-                        {row.matchesPlayed}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-500">
-                        {row.pointsPlayed}
-                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-gray-500 hidden sm:table-cell">{row.rawValue}</td>
+                      <td className="px-4 py-3 text-right font-mono text-gray-500 hidden sm:table-cell">{row.matchesPlayed}</td>
+                      <td className="px-4 py-3 text-right font-mono text-gray-500 hidden sm:table-cell">{row.pointsPlayed}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -396,93 +301,43 @@ export default function Roster() {
       )}
 
       {modalMode && (
-        <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4"
-          onClick={closeModal}
-        >
-          <div
-            className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4" onClick={closeModal}>
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-xl font-bold mb-5">
               {modalMode === 'add' ? t('roster.modal.add.title') : t('roster.modal.edit.title')}
             </h2>
             {formError && (
-              <div className="mb-4 px-4 py-2.5 bg-red-900/40 border border-red-700/60 rounded-lg text-red-400 text-sm text-center">
-                {formError}
-              </div>
+              <div className="mb-4 px-4 py-2.5 bg-red-900/40 border border-red-700/60 rounded-lg text-red-400 text-sm text-center">{formError}</div>
             )}
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <Field label={t('roster.fields.firstName')}>
-                  <input
-                    required
-                    value={form.firstName}
-                    onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
-                    className="input"
-                  />
+                  <input required value={form.firstName} onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))} className="input" />
                 </Field>
                 <Field label={t('roster.fields.lastName')}>
-                  <input
-                    required
-                    value={form.lastName}
-                    onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
-                    className="input"
-                  />
+                  <input required value={form.lastName} onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))} className="input" />
                 </Field>
                 <Field label={t('roster.fields.jerseyNumber')}>
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    value={form.jerseyNumber}
-                    onChange={(e) => setForm((f) => ({ ...f, jerseyNumber: e.target.value }))}
-                    className="input"
-                  />
+                  <input required type="number" min="0" value={form.jerseyNumber}
+                    onChange={(e) => setForm((f) => ({ ...f, jerseyNumber: e.target.value }))} className="input" />
                 </Field>
                 <Field label={t('roster.fields.position')}>
-                  <select
-                    value={form.position}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, position: e.target.value as PlayerPosition }))
-                    }
-                    className="input"
-                  >
-                    {POSITIONS.map((p) => (
-                      <option key={p} value={p}>
-                        {t(`roster.positions.${p}`)}
-                      </option>
-                    ))}
+                  <select value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value as PlayerPosition }))} className="input">
+                    {POSITIONS.map((p) => <option key={p} value={p}>{t(`roster.positions.${p}`)}</option>)}
                   </select>
                 </Field>
               </div>
               <Field label={t('roster.fields.photoUrl')}>
-                <input
-                  type="url"
-                  value={form.photoUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, photoUrl: e.target.value }))}
-                  className="input"
-                />
+                <input type="url" value={form.photoUrl} onChange={(e) => setForm((f) => ({ ...f, photoUrl: e.target.value }))} className="input" />
               </Field>
               <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={submitting}
-                  className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50"
-                >
+                <button type="button" onClick={closeModal} disabled={submitting}
+                  className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors">
                   {t('common.cancel')}
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-800 rounded-lg font-semibold"
-                >
-                  {submitting
-                    ? t('common.saving')
-                    : modalMode === 'add'
-                      ? t('roster.modal.add.submit')
-                      : t('roster.modal.edit.submit')}
+                <button type="submit" disabled={submitting}
+                  className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-800 rounded-lg font-semibold transition-colors">
+                  {submitting ? t('common.saving') : modalMode === 'add' ? t('roster.modal.add.submit') : t('roster.modal.edit.submit')}
                 </button>
               </div>
             </form>
@@ -491,15 +346,8 @@ export default function Roster() {
       )}
 
       <style>{`
-        .input {
-          width: 100%;
-          padding: 0.5rem 0.75rem;
-          background: rgb(31, 41, 55);
-          border: 1px solid rgb(55, 65, 81);
-          border-radius: 0.5rem;
-          color: white;
-        }
-        .input:focus { outline: 2px solid rgb(139, 92, 246); }
+        .input { width:100%; padding:0.5rem 0.75rem; background:rgb(31,41,55); border:1px solid rgb(55,65,81); border-radius:0.5rem; color:white; }
+        .input:focus { outline:2px solid rgb(139,92,246); }
       `}</style>
     </div>
   )

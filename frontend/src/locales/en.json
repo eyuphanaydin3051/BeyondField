@@ -85,7 +85,20 @@
     "title": "Dashboard",
     "welcome": "Welcome",
     "currentTeam": "Active Team",
-    "noStats": "No stats yet. They will appear here once match data is entered."
+    "noStats": "No stats yet. They will appear here once match data is entered.",
+    "nextMatch": "Next Match",
+    "viewMatch": "View Match",
+    "unknownOpponent": "Unknown Opponent",
+    "gettingStarted": "Add your first player or create your first match to get started.",
+    "addFirstPlayer": "Add Player",
+    "createFirstMatch": "Create Match",
+    "stats": {
+      "players": "Players",
+      "matches": "Matches",
+      "tournaments": "Tournaments",
+      "nextMatch": "Next Match",
+      "noUpcoming": "None"
+    }
   },
   "common": {
     "loading": "Loading...",
@@ -177,6 +190,11 @@
     }
   },
   "tournaments": {
+    "status": {
+      "upcoming": "Upcoming",
+      "active": "Active",
+      "past": "Finished"
+    },
     "list": {
       "title": "Tournaments",
       "empty": "No tournaments yet. Create your first one.",
@@ -205,6 +223,28 @@
       "deleteFailed": "Could not delete tournament"
     }
   },
+  "settings": {
+    "title": "Settings",
+    "sections": {
+      "general": "General",
+      "dataManagement": "Data Management"
+    },
+    "language": {
+      "label": "Language",
+      "tr": "Turkish",
+      "en": "English"
+    },
+    "import": {
+      "title": "Import from DiscBase",
+      "description": "Upload your DiscBase backup file to import your players.",
+      "selectFile": "Select File",
+      "noFile": "No file selected",
+      "submit": "Import",
+      "importing": "Importing...",
+      "success": "{{imported}} players imported, {{skipped}} skipped.",
+      "error": "Import failed"
+    }
+  },
   "matches": {
     "list": {
       "title": "Matches",
@@ -224,7 +264,14 @@
         "title": "New Match",
         "homeTeam": "Home Team",
         "awayTeam": "Opponent Team",
-        "opponentHint": "Pick the opponent from your teams list. You may need to create a team that represents the opposing club first.",
+        "opponentType": {
+          "label": "Opponent Type",
+          "registered": "Registered Team",
+          "external": "External Opponent"
+        },
+        "opponentName": "Opponent Name",
+        "opponentNamePlaceholder": "e.g. Other Club",
+        "opponentHint": "Pick from your registered teams or just enter a name.",
         "tournament": "Tournament (optional)",
         "tournamentNone": "None",
         "matchDate": "Date & Time",

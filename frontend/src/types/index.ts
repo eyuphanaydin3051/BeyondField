@@ -47,7 +47,8 @@ export interface TeamSummary {
 export interface Match {
   id: string;
   homeTeamId: string;
-  awayTeamId: string;
+  awayTeamId: string | null;
+  opponentName: string | null;
   tournamentId: string | null;
   matchDate: string;
   status: MatchStatus;
