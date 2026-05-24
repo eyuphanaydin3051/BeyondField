@@ -39,6 +39,7 @@
     "title": "Spor Seçimi",
     "subtitle": "Devam etmek için bir spor dalı seçin",
     "comingSoon": "Yakında",
+    "select": "Seç",
     "sports": {
       "ultimate": "Ultimate Frisbee",
       "football": "Futbol",
@@ -51,6 +52,7 @@
     "subtitle": "Bir takım seç veya yeni bir takım oluştur",
     "loading": "Takımlar yükleniyor...",
     "empty": "Henüz bir takımın yok. İlk takımını oluştur.",
+    "selectHint": "Seç",
     "createButton": "Yeni Takım Oluştur",
     "modal": {
       "title": "Yeni Takım Oluştur",
@@ -70,6 +72,7 @@
   },
   "layout": {
     "nav": {
+      "ariaLabel": "Ana menü",
       "dashboard": "Panel",
       "roster": "Kadro",
       "tournaments": "Turnuvalar",
@@ -136,6 +139,9 @@
     "table": {
       "empty": "Henüz oyuncu yok. İlk oyuncuyu ekleyin.",
       "addButton": "Oyuncu Ekle"
+    },
+    "card": {
+      "photoAlt": "{{name}} fotoğrafı"
     },
     "modal": {
       "add": {
@@ -276,6 +282,9 @@
         "tournamentNone": "Yok",
         "matchDate": "Tarih ve Saat",
         "submit": "Oluştur"
+      },
+      "delete": {
+        "message": "Bu maçı silmek istediğine emin misin? Bu işlem geri alınamaz."
       }
     },
     "detail": {
@@ -285,7 +294,11 @@
       "noStats": "Henüz istatistik yok.",
       "eventsTitle": "Olay Akışı",
       "statsTitle": "Oyuncu İstatistikleri",
-      "vs": "vs"
+      "vs": "vs",
+      "player": "Oyuncu",
+      "goals": "Goller",
+      "assists": "Asistler",
+      "blocks": "Bloklar"
     },
     "status": {
       "SCHEDULED": "Planlandı",
@@ -295,6 +308,7 @@
     "errors": {
       "loadFailed": "Maçlar yüklenemedi",
       "createFailed": "Maç oluşturulamadı",
+      "deleteFailed": "Maç silinemedi",
       "detailFailed": "Maç yüklenemedi"
     }
   }

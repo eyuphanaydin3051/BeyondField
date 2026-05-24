@@ -32,6 +32,17 @@ export async function createMatch(req: Request, res: Response): Promise<void> {
   }
 }
 
+export async function deleteMatch(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const id = req.params['id'] as string;
+    await matchService.deleteMatch(id, userId);
+    res.status(204).send();
+  } catch (e) {
+    fail(res, e);
+  }
+}
+
 export async function getMatch(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user!.userId;

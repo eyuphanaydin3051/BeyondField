@@ -39,6 +39,7 @@
     "title": "Choose a Sport",
     "subtitle": "Pick a sport to continue",
     "comingSoon": "Coming soon",
+    "select": "Select",
     "sports": {
       "ultimate": "Ultimate Frisbee",
       "football": "Football",
@@ -51,6 +52,7 @@
     "subtitle": "Select a team or create a new one",
     "loading": "Loading teams...",
     "empty": "You don't have any teams yet. Create your first one.",
+    "selectHint": "Select",
     "createButton": "Create New Team",
     "modal": {
       "title": "Create New Team",
@@ -70,6 +72,7 @@
   },
   "layout": {
     "nav": {
+      "ariaLabel": "Main menu",
       "dashboard": "Dashboard",
       "roster": "Roster",
       "tournaments": "Tournaments",
@@ -136,6 +139,9 @@
     "table": {
       "empty": "No players yet. Add the first player.",
       "addButton": "Add Player"
+    },
+    "card": {
+      "photoAlt": "{{name}} photo"
     },
     "modal": {
       "add": {
@@ -276,6 +282,9 @@
         "tournamentNone": "None",
         "matchDate": "Date & Time",
         "submit": "Create"
+      },
+      "delete": {
+        "message": "Are you sure you want to delete this match? This action cannot be undone."
       }
     },
     "detail": {
@@ -285,7 +294,11 @@
       "noStats": "No stats yet.",
       "eventsTitle": "Event Timeline",
       "statsTitle": "Player Stats",
-      "vs": "vs"
+      "vs": "vs",
+      "player": "Player",
+      "goals": "Goals",
+      "assists": "Assists",
+      "blocks": "Blocks"
     },
     "status": {
       "SCHEDULED": "Scheduled",
@@ -295,6 +308,7 @@
     "errors": {
       "loadFailed": "Could not load matches",
       "createFailed": "Could not create match",
+      "deleteFailed": "Could not delete match",
       "detailFailed": "Could not load match"
     }
   }

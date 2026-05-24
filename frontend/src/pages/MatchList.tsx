@@ -22,9 +22,9 @@ interface CreateForm {
 const emptyForm: CreateForm = { opponentType: 'registered', awayTeamId: '', opponentName: '', tournamentId: '', matchDate: '' }
 
 const STATUS_STYLES: Record<string, string> = {
-  SCHEDULED: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  IN_PROGRESS: 'bg-green-500/20 text-green-300 border-green-500/30',
-  FINISHED: 'bg-gray-700/40 text-gray-400 border-gray-600/30',
+  SCHEDULED:   'bg-blue-500/15 text-blue-300 border-blue-500/25',
+  IN_PROGRESS: 'bg-green-500/15 text-green-300 border-green-500/25',
+  FINISHED:    'bg-white/[0.04] text-slate-500 border-white/[0.08]',
 }
 
 export default function MatchList() {
@@ -41,6 +41,7 @@ export default function MatchList() {
   const [form, setForm] = useState<CreateForm>(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!teamId) return
@@ -96,6 +97,20 @@ export default function MatchList() {
     } finally { setSubmitting(false) }
   }
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm(t('matches.modal.delete.message'))) return
+    setDeletingId(id)
+    try {
+      await apiClient.delete(`/api/matches/${id}`)
+      await load()
+    } catch (err) {
+      const ax = err as AxiosError<ErrorResponse>
+      alert(ax.response?.data?.message ?? t('matches.errors.deleteFailed'))
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleString(i18n.language === 'tr' ? 'tr-TR' : 'en-US', {
       day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -107,69 +122,85 @@ export default function MatchList() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold">{t('matches.list.title')}</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">{t('matches.list.title')}</h1>
           {!loading && (
-            <span className="px-2.5 py-0.5 bg-gray-800 rounded-full text-xs text-gray-400 font-mono">{matches.length}</span>
+            <span className="px-2.5 py-0.5 bg-white/[0.06] border border-white/[0.08] rounded-full text-xs text-slate-400 font-mono">{matches.length}</span>
           )}
         </div>
         <button type="button" onClick={openModal}
-          className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg font-semibold text-sm transition-colors">
-          + {t('matches.list.createButton')}
+          className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-400 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-green-500/20">
+          <span aria-hidden="true">+</span>
+          {t('matches.list.createButton')}
         </button>
       </div>
 
-      {loading && <p className="text-gray-400 text-center py-8">{t('common.loading')}</p>}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
       {error && !loading && (
-        <div className="px-4 py-3 bg-red-900/40 border border-red-700/60 rounded-lg text-red-400 text-center">{error}</div>
+        <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-center">{error}</div>
       )}
       {!loading && !error && matches.length === 0 && (
         <div className="py-16 text-center">
-          <div className="text-4xl mb-3">⚽</div>
-          <p className="text-gray-500 mb-4">{t('matches.list.empty')}</p>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-2xl mb-4">🥏</div>
+          <p className="text-slate-500 text-sm mb-4">{t('matches.list.empty')}</p>
           <button type="button" onClick={openModal}
-            className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg font-semibold text-sm transition-colors">
+            className="px-4 py-2 bg-green-500 hover:bg-green-400 text-white rounded-xl font-semibold text-sm transition-colors shadow-lg shadow-green-500/20">
             {t('matches.list.createButton')}
           </button>
         </div>
       )}
 
       {!loading && matches.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-gray-800">
+        <div className="overflow-x-auto rounded-xl border border-white/[0.08]">
           <table className="w-full text-left">
-            <thead className="bg-gray-900 text-gray-500 text-xs uppercase tracking-wider">
+            <thead className="bg-[#0f1117] text-slate-500 text-xs uppercase tracking-wider border-b border-white/[0.06]">
               <tr>
-                <th className="px-4 py-3">{t('matches.list.columns.date')}</th>
-                <th className="px-4 py-3">{t('matches.list.columns.home')}</th>
-                <th className="px-4 py-3 text-center">{t('matches.list.columns.score')}</th>
-                <th className="px-4 py-3">{t('matches.list.columns.away')}</th>
-                <th className="px-4 py-3 hidden md:table-cell">{t('matches.list.columns.tournament')}</th>
-                <th className="px-4 py-3">{t('matches.list.columns.status')}</th>
+                <th className="px-4 py-3 font-semibold">{t('matches.list.columns.date')}</th>
+                <th className="px-4 py-3 font-semibold">{t('matches.list.columns.home')}</th>
+                <th className="px-4 py-3 text-center font-semibold">{t('matches.list.columns.score')}</th>
+                <th className="px-4 py-3 font-semibold">{t('matches.list.columns.away')}</th>
+                <th className="px-4 py-3 hidden md:table-cell font-semibold">{t('matches.list.columns.tournament')}</th>
+                <th className="px-4 py-3 font-semibold">{t('matches.list.columns.status')}</th>
+                <th className="px-4 py-3 text-right font-semibold">{t('common.actions')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-white/[0.04]">
               {matches.map((m) => (
-                <tr key={m.id} className="hover:bg-gray-900/50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-gray-400 whitespace-nowrap">{fmtDate(m.matchDate)}</td>
+                <tr key={m.id} className="hover:bg-white/[0.02] transition-colors">
+                  <td className="px-4 py-3 text-sm text-slate-400 whitespace-nowrap tabular-nums">{fmtDate(m.matchDate)}</td>
                   <td className="px-4 py-3">
-                    <Link to={`/matches/${m.id}`} className="text-violet-300 hover:text-white font-medium transition-colors">
+                    <Link to={`/matches/${m.id}`} className="text-green-400 hover:text-green-300 font-semibold transition-colors">
                       {m.homeTeam?.name ?? m.homeTeamId}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className="font-mono font-bold text-lg text-white">
-                      {m.homeScore} <span className="text-gray-600">–</span> {m.awayScore}
+                    <span className="font-mono font-bold text-lg text-white tabular-nums">
+                      {m.homeScore} <span className="text-slate-600 font-light">–</span> {m.awayScore}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium">{opponentName(m)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">
+                  <td className="px-4 py-3 font-medium text-slate-200">{opponentName(m)}</td>
+                  <td className="px-4 py-3 text-sm hidden md:table-cell">
                     {m.tournament?.name
-                      ? <span className="px-2 py-0.5 bg-gray-800 rounded-md text-xs">{m.tournament.name}</span>
-                      : '—'}
+                      ? <span className="px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-lg text-xs font-medium">{m.tournament.name}</span>
+                      : <span className="text-slate-600">—</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[m.status] ?? ''}`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${STATUS_STYLES[m.status] ?? ''}`}>
                       {t(`matches.status.${m.status}`)}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(m.id)}
+                      disabled={deletingId === m.id}
+                      className="text-red-400 hover:text-red-300 text-sm font-medium disabled:opacity-50 transition-colors"
+                    >
+                      {deletingId === m.id ? t('common.deleting') : t('common.delete')}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -179,21 +210,21 @@ export default function MatchList() {
       )}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4" onClick={closeModal}>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold mb-1">{t('matches.modal.create.title')}</h2>
-            <p className="text-sm text-gray-500 mb-4">{t('matches.modal.create.opponentHint')}</p>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4" onClick={closeModal}>
+          <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-white mb-0.5">{t('matches.modal.create.title')}</h2>
+            <p className="text-sm text-slate-500 mb-5">{t('matches.modal.create.opponentHint')}</p>
             {formError && (
-              <div className="mb-4 px-4 py-2.5 bg-red-900/40 border border-red-700/60 rounded-lg text-red-400 text-sm text-center">{formError}</div>
+              <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm text-center">{formError}</div>
             )}
             <form onSubmit={handleCreate} className="space-y-3">
               <Field label={t('matches.modal.create.homeTeam')}>
-                <input value={selectedTeam?.name ?? ''} disabled className="input opacity-70" />
+                <input value={selectedTeam?.name ?? ''} disabled className="field-input opacity-60" />
               </Field>
 
               {/* Opponent Type Toggle */}
               <div>
-                <span className="block text-sm text-gray-400 mb-2">{t('matches.modal.create.opponentType.label')}</span>
+                <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('matches.modal.create.opponentType.label')}</span>
                 <div className="flex gap-2">
                   {(['registered', 'external'] as OpponentType[]).map((type) => (
                     <button
@@ -201,10 +232,10 @@ export default function MatchList() {
                       type="button"
                       onClick={() => setForm((f) => ({ ...f, opponentType: type, awayTeamId: '', opponentName: '' }))}
                       className={[
-                        'flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors',
+                        'flex-1 py-2 px-3 rounded-xl text-sm font-semibold border transition-all duration-150',
                         form.opponentType === type
-                          ? 'bg-violet-600/20 border-violet-500/50 text-violet-300'
-                          : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600',
+                          ? 'bg-green-500/10 border-green-500/30 text-green-300'
+                          : 'bg-white/[0.04] border-white/[0.08] text-slate-400 hover:border-white/[0.14]',
                       ].join(' ')}
                     >
                       {t(`matches.modal.create.opponentType.${type}`)}
@@ -216,7 +247,7 @@ export default function MatchList() {
               {form.opponentType === 'registered' ? (
                 <Field label={t('matches.modal.create.awayTeam')}>
                   <select required value={form.awayTeamId}
-                    onChange={(e) => setForm((f) => ({ ...f, awayTeamId: e.target.value }))} className="input">
+                    onChange={(e) => setForm((f) => ({ ...f, awayTeamId: e.target.value }))} className="field-input">
                     <option value="">—</option>
                     {allTeams.filter((tm) => tm.id !== teamId).map((tm) => (
                       <option key={tm.id} value={tm.id}>{tm.name}</option>
@@ -230,28 +261,28 @@ export default function MatchList() {
                     value={form.opponentName}
                     placeholder={t('matches.modal.create.opponentNamePlaceholder')}
                     onChange={(e) => setForm((f) => ({ ...f, opponentName: e.target.value }))}
-                    className="input"
+                    className="field-input"
                   />
                 </Field>
               )}
 
               <Field label={t('matches.modal.create.tournament')}>
-                <select value={form.tournamentId} onChange={(e) => setForm((f) => ({ ...f, tournamentId: e.target.value }))} className="input">
+                <select value={form.tournamentId} onChange={(e) => setForm((f) => ({ ...f, tournamentId: e.target.value }))} className="field-input">
                   <option value="">{t('matches.modal.create.tournamentNone')}</option>
                   {tournaments.map((tr) => <option key={tr.id} value={tr.id}>{tr.name}</option>)}
                 </select>
               </Field>
               <Field label={t('matches.modal.create.matchDate')}>
                 <input required type="datetime-local" value={form.matchDate}
-                  onChange={(e) => setForm((f) => ({ ...f, matchDate: e.target.value }))} className="input" />
+                  onChange={(e) => setForm((f) => ({ ...f, matchDate: e.target.value }))} className="field-input" />
               </Field>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={closeModal} disabled={submitting}
-                  className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50 transition-colors">
+                  className="flex-1 py-2.5 bg-white/[0.06] hover:bg-white/[0.09] text-slate-300 font-medium rounded-xl disabled:opacity-50 transition-colors">
                   {t('common.cancel')}
                 </button>
                 <button type="submit" disabled={submitting}
-                  className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-800 rounded-lg font-semibold transition-colors">
+                  className="flex-1 py-2.5 bg-green-500 hover:bg-green-400 disabled:bg-green-900 disabled:text-green-600 text-white rounded-xl font-semibold transition-all shadow-lg shadow-green-500/20">
                   {submitting ? t('common.creating') : t('matches.modal.create.submit')}
                 </button>
               </div>
@@ -259,11 +290,6 @@ export default function MatchList() {
           </div>
         </div>
       )}
-
-      <style>{`
-        .input { width:100%; padding:0.5rem 0.75rem; background:rgb(31,41,55); border:1px solid rgb(55,65,81); border-radius:0.5rem; color:white; }
-        .input:focus { outline:2px solid rgb(139,92,246); }
-      `}</style>
     </div>
   )
 }
@@ -271,7 +297,7 @@ export default function MatchList() {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-sm text-gray-400 mb-1">{label}</span>
+      <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{label}</span>
       {children}
     </label>
   )

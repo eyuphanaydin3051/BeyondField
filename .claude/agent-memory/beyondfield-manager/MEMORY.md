@@ -1,0 +1,1 @@
+- [Project Structure](project-structure.md) — monorepo: frontend/ and backend/ top-level dirs; never use bare src/ paths

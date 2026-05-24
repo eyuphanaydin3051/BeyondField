@@ -55,33 +55,31 @@ export default function Settings() {
 
   return (
     <div className="max-w-2xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
-      </div>
+      <h1 className="text-2xl font-bold text-white tracking-tight">{t('settings.title')}</h1>
 
       {/* General Section */}
-      <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-5">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-500">
+      <section className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-6 space-y-5">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
           {t('settings.sections.general')}
         </h2>
 
         {/* Language */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="font-medium text-white">{t('settings.language.label')}</div>
-            <div className="text-sm text-gray-500 mt-0.5">
+            <div className="font-semibold text-white text-sm">{t('settings.language.label')}</div>
+            <div className="text-sm text-slate-500 mt-0.5">
               {i18n.language === 'tr' ? t('settings.language.tr') : t('settings.language.en')}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             <button
               type="button"
               onClick={() => changeLanguage('tr')}
               className={[
-                'px-4 py-2 rounded-lg text-sm font-medium border transition-colors',
+                'px-4 py-2 rounded-xl text-sm font-semibold border transition-all duration-150',
                 i18n.language === 'tr'
-                  ? 'bg-violet-600/20 border-violet-500/50 text-violet-300'
-                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600',
+                  ? 'bg-green-500/10 border-green-500/30 text-green-300'
+                  : 'bg-white/[0.04] border-white/[0.08] text-slate-400 hover:border-white/[0.14]',
               ].join(' ')}
             >
               {t('settings.language.tr')}
@@ -90,10 +88,10 @@ export default function Settings() {
               type="button"
               onClick={() => changeLanguage('en')}
               className={[
-                'px-4 py-2 rounded-lg text-sm font-medium border transition-colors',
+                'px-4 py-2 rounded-xl text-sm font-semibold border transition-all duration-150',
                 i18n.language === 'en'
-                  ? 'bg-violet-600/20 border-violet-500/50 text-violet-300'
-                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600',
+                  ? 'bg-green-500/10 border-green-500/30 text-green-300'
+                  : 'bg-white/[0.04] border-white/[0.08] text-slate-400 hover:border-white/[0.14]',
               ].join(' ')}
             >
               {t('settings.language.en')}
@@ -103,26 +101,26 @@ export default function Settings() {
       </section>
 
       {/* Data Management Section */}
-      <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-5">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-500">
+      <section className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-6 space-y-5">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">
           {t('settings.sections.dataManagement')}
         </h2>
 
         <div className="space-y-4">
           <div>
-            <div className="font-medium text-white mb-1">{t('settings.import.title')}</div>
-            <p className="text-sm text-gray-500">{t('settings.import.description')}</p>
+            <div className="font-semibold text-white text-sm mb-1">{t('settings.import.title')}</div>
+            <p className="text-sm text-slate-500">{t('settings.import.description')}</p>
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+              className="px-4 py-2 bg-white/[0.06] hover:bg-white/[0.09] border border-white/[0.08] hover:border-white/[0.14] text-slate-200 rounded-xl text-sm font-semibold transition-all"
             >
               {t('settings.import.selectFile')}
             </button>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-slate-500 font-mono truncate max-w-xs">
               {selectedFile ? selectedFile.name : t('settings.import.noFile')}
             </span>
             <input
@@ -139,15 +137,21 @@ export default function Settings() {
               type="button"
               onClick={handleImport}
               disabled={importing}
-              className="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-800 text-white rounded-lg font-semibold text-sm transition-colors disabled:opacity-60"
+              className="flex items-center gap-2 px-5 py-2.5 bg-green-500 hover:bg-green-400 disabled:bg-green-900 disabled:text-green-600 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-green-500/20 disabled:opacity-60"
             >
+              {importing && (
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              )}
               {importing ? t('settings.import.importing') : t('settings.import.submit')}
             </button>
           )}
 
           {importResult && (
-            <div className="flex items-start gap-3 px-4 py-3 bg-green-900/30 border border-green-700/40 rounded-lg">
-              <span className="text-green-400 text-lg">✓</span>
+            <div className="flex items-start gap-3 px-4 py-3 bg-green-500/10 border border-green-500/25 rounded-xl">
+              <span className="text-green-400 font-bold text-lg leading-none mt-0.5" aria-hidden="true">✓</span>
               <p className="text-sm text-green-300">
                 {t('settings.import.success', {
                   imported: importResult.imported,
@@ -158,7 +162,7 @@ export default function Settings() {
           )}
 
           {importError && (
-            <div className="px-4 py-3 bg-red-900/40 border border-red-700/60 rounded-lg text-red-400 text-sm">
+            <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
               {importError}
             </div>
           )}

@@ -10,3 +10,4 @@ teamMatchRoutes.post('/:teamId/matches', matchController.createMatch);
 export const matchRoutes = Router();
 matchRoutes.use(authMiddleware);
 matchRoutes.get('/:id', matchController.getMatch);
+matchRoutes.delete('/:id', matchController.deleteMatch);

@@ -63,3 +63,7 @@ export async function createMatch(data: {
     },
   });
 }
+
+export async function deleteMatch(id: string) {
+  return prisma.match.delete({ where: { id } });
+}

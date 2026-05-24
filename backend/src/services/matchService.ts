@@ -77,6 +77,11 @@ export async function createMatch(
   });
 }
 
+export async function deleteMatch(matchId: string, userId: string) {
+  await assertMatchOwnership(matchId, userId);
+  return matchRepository.deleteMatch(matchId);
+}
+
 export async function getMatchDetail(matchId: string, userId: string) {
   await assertMatchOwnership(matchId, userId);
   const [match, events, playerStats] = await prisma.$transaction([

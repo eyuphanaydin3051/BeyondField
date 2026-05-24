@@ -1,0 +1,1 @@
+- [BeyondField Design System](design-system.md) — Color palette, surface tokens, component patterns, anti-patterns; green-500 primary, dark surfaces #090c10/#0f1117, .field-input utility
