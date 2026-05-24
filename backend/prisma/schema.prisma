@@ -2,9 +2,9 @@
 // Prisma Schema
 //
 // Architecture notes:
-//   - Raw match events are stored in MatchEvent (append-only, never mutated).
-//   - Aggregated statistics are written to PlayerStat by a background worker
-//     triggered on each MatchEvent insert. Read queries hit only PlayerStat.
+//   - Raw match events are stored in FrisbeeMatchEvent (append-only, never mutated).
+//   - Aggregated statistics are written synchronously in the same transaction
+//     that creates the event (prisma.$transaction). Read queries hit only *Stat tables.
 //   - Media assets (logos, photos) are stored in Cloudflare R2 / AWS S3;
 //     the database persists only the URL string.
 //   - No session or in-memory state is stored in the database (stateless).
@@ -46,6 +46,42 @@ enum FrisbeeActionType {
   DROP
   CALLAHAN
   DEFENSE
+  COMPLETION
+  OPPONENT_GOAL
+  SUBSTITUTION
+  PULL_SUCCESS
+  PULL_FAIL
+  TIMEOUT_START
+  POINT_START
+  POINT_END
+}
+
+enum PlayerPosition {
+  HANDLER
+  CUTTER
+  HYBRID
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum Language {
+  TR
+  EN
+}
+
+enum NameFormat {
+  FIRST_LAST
+  LAST_FIRST
+}
+
+enum CaptureMode {
+  SIMPLE
+  ADVANCED
+  PRO
 }
 
 // ---------------------------------------------------------------------------
@@ -60,76 +96,170 @@ model User {
   role         Role
   createdAt    DateTime @default(now())
 
-  ownedTeams Team[] @relation("TeamOwner")
+  ownedTeams Team[]        @relation("TeamOwner")
+  settings   UserSettings?
 }
 
-/// Football clubs / teams.
+/// Sports clubs / teams.
 model Team {
-  id        String    @id @default(cuid())
-  name      String
+  id         String    @id @default(cuid())
+  name       String
   /// Cloudflare R2 / AWS S3 public URL — nullable until an image is uploaded.
-  logoUrl   String?
-  ownerId   String
-  sportType SportType @default(ULTIMATE_FRISBEE)
-  createdAt DateTime  @default(now())
+  logoUrl    String?
+  inviteCode String?   @unique
+  ownerId    String
+  sportType  SportType @default(ULTIMATE_FRISBEE)
+  createdAt  DateTime  @default(now())
 
-  owner       User     @relation("TeamOwner", fields: [ownerId], references: [id])
-  players     Player[]
-  homeMatches Match[]  @relation("HomeMatches")
-  awayMatches Match[]  @relation("AwayMatches")
+  owner       User         @relation("TeamOwner", fields: [ownerId], references: [id])
+  players     Player[]     @relation("TeamPlayers")
+  homeMatches Match[]      @relation("HomeMatches")
+  awayMatches Match[]      @relation("AwayMatches")
+  tournaments Tournament[]
 }
 
 /// Individual players registered to a team.
 model Player {
-  id           String   @id @default(cuid())
+  id           String         @id @default(cuid())
   firstName    String
   lastName     String
-  position     String
+  position     PlayerPosition
   jerseyNumber Int
   /// Cloudflare R2 / AWS S3 public URL — nullable until a photo is uploaded.
   photoUrl     String?
   teamId       String
-  createdAt    DateTime @default(now())
+  createdAt    DateTime       @default(now())
 
-  team   Team                @relation(fields: [teamId], references: [id])
-  events FrisbeeMatchEvent[]
-  stats  FrisbeePlayerStat[]
+  team              Team                     @relation("TeamPlayers", fields: [teamId], references: [id], onDelete: Cascade)
+  events            FrisbeeMatchEvent[]      @relation("EventPlayer")
+  secondaryEvents   FrisbeeMatchEvent[]      @relation("EventSecondaryPlayer")
+  stats             FrisbeePlayerStat?
+  matchStats        MatchPlayerStat[]
+  tournamentStats   TournamentPlayerStat[]
+  tournamentRosters TournamentRosterPlayer[]
+  passEdgesFrom     PlayerPassEdge[]         @relation("PassEdgeFrom")
+  passEdgesTo       PlayerPassEdge[]         @relation("PassEdgeTo")
 }
 
 /// A scheduled or completed match between two teams.
 model Match {
-  id         String      @id @default(cuid())
-  homeTeamId String
-  awayTeamId String
-  matchDate  DateTime
-  status     MatchStatus
-  sportType  SportType   @default(ULTIMATE_FRISBEE)
-  homeScore  Int         @default(0)
-  awayScore  Int         @default(0)
-  createdAt  DateTime    @default(now())
+  id              String      @id @default(cuid())
+  homeTeamId      String
+  awayTeamId      String
+  tournamentId    String?
+  matchDate       DateTime
+  status          MatchStatus
+  sportType       SportType   @default(ULTIMATE_FRISBEE)
+  homeScore       Int         @default(0)
+  awayScore       Int         @default(0)
+  youtubeVideoId  String?
+  durationSeconds Int?
+  finished        Boolean     @default(false)
+  createdAt       DateTime    @default(now())
 
-  homeTeam Team                @relation("HomeMatches", fields: [homeTeamId], references: [id])
-  awayTeam Team                @relation("AwayMatches", fields: [awayTeamId], references: [id])
-  events   FrisbeeMatchEvent[]
+  homeTeam    Team                @relation("HomeMatches", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeam    Team                @relation("AwayMatches", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  tournament  Tournament?         @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  events      FrisbeeMatchEvent[]
+  playerStats MatchPlayerStat[]
 }
 
-/// Raw Ultimate Frisbee event log — append-only.
+/// Raw Ultimate Frisbee event log — append-only, never mutated.
 model FrisbeeMatchEvent {
-  id         String            @id @default(cuid())
-  matchId    String
-  playerId   String
-  actionType FrisbeeActionType
-  minute     Int
-  createdAt  DateTime          @default(now())
+  id                    String            @id @default(cuid())
+  matchId               String
+  playerId              String
+  secondaryPlayerId     String?
+  actionType            FrisbeeActionType
+  minute                Int
+  videoTimestampSeconds Int?
+  period                Int?
+  scoreUsAtEvent        Int?
+  scoreThemAtEvent      Int?
+  createdAt             DateTime          @default(now())
 
-  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  match           Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player          Player  @relation("EventPlayer", fields: [playerId], references: [id], onDelete: Cascade)
+  secondaryPlayer Player? @relation("EventSecondaryPlayer", fields: [secondaryPlayerId], references: [id], onDelete: SetNull)
+}
+
+/// Pre-aggregated Ultimate Frisbee career statistics per player.
+model FrisbeePlayerStat {
+  id               String @id @default(cuid())
+  playerId         String @unique
+  goals            Int    @default(0)
+  assists          Int    @default(0)
+  blocks           Int    @default(0)
+  throwaways       Int    @default(0)
+  drops            Int    @default(0)
+  callahans        Int    @default(0)
+  completions      Int    @default(0)
+  matchesPlayed    Int    @default(0)
+  pointsPlayed     Int    @default(0)
+  successfulPasses Int    @default(0)
+  pullAttempts     Int    @default(0)
+  successfulPulls  Int    @default(0)
+  plusMinus        Int    @default(0)
+
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
 }
 
-/// Pre-aggregated Ultimate Frisbee statistics per player.
-model FrisbeePlayerStat {
+/// Pre-aggregated per-match statistics per player.
+model MatchPlayerStat {
+  id           String @id @default(cuid())
+  matchId      String
+  playerId     String
+  goals        Int    @default(0)
+  assists      Int    @default(0)
+  blocks       Int    @default(0)
+  throwaways   Int    @default(0)
+  drops        Int    @default(0)
+  callahans    Int    @default(0)
+  completions  Int    @default(0)
+  pointsPlayed Int    @default(0)
+  plusMinus    Int    @default(0)
+
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, playerId])
+}
+
+/// Tournament (competition event grouping multiple matches).
+model Tournament {
+  id          String    @id @default(cuid())
+  name        String
+  ownerTeamId String
+  sportType   SportType @default(ULTIMATE_FRISBEE)
+  startDate   DateTime
+  endDate     DateTime?
+  location    String?
+  createdAt   DateTime  @default(now())
+
+  ownerTeam     Team                     @relation(fields: [ownerTeamId], references: [id], onDelete: Cascade)
+  matches       Match[]
+  rosterPlayers TournamentRosterPlayer[]
+  playerStats   TournamentPlayerStat[]
+}
+
+/// Per-tournament roster — allows jersey number overrides.
+model TournamentRosterPlayer {
+  id             String @id @default(cuid())
+  tournamentId   String
+  playerId       String
+  jerseyOverride Int?
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  player     Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, playerId])
+}
+
+/// Pre-aggregated per-tournament statistics per player.
+model TournamentPlayerStat {
   id            String @id @default(cuid())
-  playerId      String @unique
+  tournamentId  String
+  playerId      String
   goals         Int    @default(0)
   assists       Int    @default(0)
   blocks        Int    @default(0)
@@ -138,6 +268,38 @@ model FrisbeePlayerStat {
   callahans     Int    @default(0)
   completions   Int    @default(0)
   matchesPlayed Int    @default(0)
+  pointsPlayed  Int    @default(0)
+  plusMinus     Int    @default(0)
 
-  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  player     Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, playerId])
+}
+
+/// Pass connection graph — upserted on each COMPLETION / ASSIST event.
+model PlayerPassEdge {
+  id           String @id @default(cuid())
+  fromPlayerId String
+  toPlayerId   String
+  count        Int    @default(0)
+
+  fromPlayer Player @relation("PassEdgeFrom", fields: [fromPlayerId], references: [id], onDelete: Cascade)
+  toPlayer   Player @relation("PassEdgeTo", fields: [toPlayerId], references: [id], onDelete: Cascade)
+
+  @@unique([fromPlayerId, toPlayerId])
+}
+
+/// Per-user application settings — created on register with defaults.
+model UserSettings {
+  id                 String      @id @default(cuid())
+  userId             String      @unique
+  theme              Theme       @default(SYSTEM)
+  language           Language    @default(TR)
+  nameFormat         NameFormat  @default(FIRST_LAST)
+  defaultCaptureMode CaptureMode @default(SIMPLE)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
