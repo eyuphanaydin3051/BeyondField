@@ -94,11 +94,40 @@ export async function setMatchStatus(
 ): Promise<object> {
   await assertMatchOwnership(matchId, userId);
   const finished = status === 'FINISHED';
-  return matchRepository.updateMatchStatus(
-    matchId,
-    status as MatchStatus,
-    finished,
-  );
+  const match = await matchRepository.updateMatchStatus(matchId, status as MatchStatus, finished);
+
+  if (finished) {
+    // Increment matchesPlayed for every player who appeared in this match
+    const participants = await prisma.matchPlayerStat.findMany({
+      where: { matchId },
+      select: { playerId: true },
+    });
+    const tournamentId = (match as any).tournamentId ?? null;
+
+    await prisma.$transaction(
+      participants.map(({ playerId }) =>
+        prisma.frisbeePlayerStat.upsert({
+          where: { playerId },
+          create: { playerId, matchesPlayed: 1 },
+          update: { matchesPlayed: { increment: 1 } },
+        }),
+      ),
+    );
+
+    if (tournamentId) {
+      await prisma.$transaction(
+        participants.map(({ playerId }) =>
+          prisma.tournamentPlayerStat.upsert({
+            where: { tournamentId_playerId: { tournamentId, playerId } },
+            create: { tournamentId, playerId, matchesPlayed: 1 },
+            update: { matchesPlayed: { increment: 1 } },
+          }),
+        ),
+      );
+    }
+  }
+
+  return match;
 }
 
 // ---------------------------------------------------------------------------
@@ -441,6 +470,36 @@ export async function archivePoint(
   });
 
   return { status: 'success' };
+}
+
+// ---------------------------------------------------------------------------
+// Update match metadata
+// ---------------------------------------------------------------------------
+
+export interface UpdateMatchInput {
+  youtubeVideoId?: string;
+  opponentName?: string;
+}
+
+export async function updateMatch(
+  matchId: string,
+  userId: string,
+  input: UpdateMatchInput,
+) {
+  await assertMatchOwnership(matchId, userId);
+
+  const patch: Record<string, string | null> = {};
+  if (input.youtubeVideoId !== undefined) {
+    patch['youtubeVideoId'] = input.youtubeVideoId.trim() || null;
+  }
+  if (input.opponentName !== undefined) {
+    patch['opponentName'] = input.opponentName.trim() || null;
+  }
+  if (Object.keys(patch).length === 0) {
+    throw err(400, 'Nothing to update');
+  }
+
+  return prisma.match.update({ where: { id: matchId }, data: patch });
 }
 
 // ---------------------------------------------------------------------------

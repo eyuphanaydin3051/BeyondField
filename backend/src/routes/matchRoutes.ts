@@ -10,6 +10,7 @@ teamMatchRoutes.post('/:teamId/matches', matchController.createMatch);
 export const matchRoutes = Router();
 matchRoutes.use(authMiddleware);
 matchRoutes.get('/:id', matchController.getMatch);
+matchRoutes.put('/:id', matchController.updateMatch);
 matchRoutes.delete('/:id', matchController.deleteMatch);
 matchRoutes.post('/:id/start', matchController.startMatch);
 matchRoutes.post('/:id/finish', matchController.finishMatch);

@@ -30,9 +30,8 @@ interface TeamAverages {
 }
 
 interface PassNetworkEntry {
-  receiverId: string
-  firstName: string
-  lastName: string
+  toPlayerId: string
+  toPlayerName: string
   jerseyNumber: number
   count: number
 }
@@ -236,12 +235,12 @@ export default function PlayerDetail() {
               {passNetwork.map((entry) => {
                 const barPct = Math.round((entry.count / maxPassCount) * 100)
                 return (
-                  <div key={entry.receiverId} className="flex items-center gap-3">
+                  <div key={entry.toPlayerId} className="flex items-center gap-3">
                     <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/20 font-mono text-xs font-bold text-green-400 flex-shrink-0">
                       {entry.jerseyNumber}
                     </span>
                     <span className="text-sm font-medium text-slate-200 w-28 truncate flex-shrink-0">
-                      {entry.firstName} {entry.lastName}
+                      {entry.toPlayerName}
                     </span>
                     <div className="flex-1 bg-white/[0.05] rounded-full h-2 overflow-hidden">
                       <div

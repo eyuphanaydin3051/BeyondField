@@ -1,0 +1,1 @@
+{"version":3,"file":"teamService.d.ts","sourceRoot":"","sources":["../../src/services/teamService.ts"],"names":[],"mappings":"AAIA,wBAAsB,SAAS,CAAC,MAAM,EAAE,MAAM;;;;;;;;KAE7C;AAED,wBAAsB,UAAU,CAAC,MAAM,EAAE,MAAM,EAAE,IAAI,EAAE,MAAM,EAAE,OAAO,CAAC,EAAE,MAAM,GAAG,IAAI;;;;;;;;GAarF;AAeD,wBAAsB,eAAe,CAAC,MAAM,EAAE,MAAM,EAAE,MAAM,EAAE,MAAM,GAAG,OAAO,CAAC,MAAM,CAAC,CAwDrF"}

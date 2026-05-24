@@ -6,6 +6,7 @@ import TeamSelection from './pages/TeamSelection'
 import Dashboard from './pages/Dashboard'
 import Roster from './pages/Roster'
 import TournamentList from './pages/TournamentList'
+import TournamentDetail from './pages/TournamentDetail'
 import MatchList from './pages/MatchList'
 import MatchDetail from './pages/MatchDetail'
 import MatchTracking from './pages/MatchTracking'
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/roster" element={<Roster />} />
             <Route path="/tournaments" element={<TournamentList />} />
+            <Route path="/tournaments/:id" element={<TournamentDetail />} />
             <Route path="/matches" element={<MatchList />} />
             <Route path="/matches/:id" element={<MatchDetail />} />
             <Route path="/players/:id" element={<PlayerDetail />} />

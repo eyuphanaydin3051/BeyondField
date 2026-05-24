@@ -1,3 +1,4 @@
+import { prisma } from '../lib/prisma';
 import * as tournamentRepository from '../repositories/tournamentRepository';
 import {
   assertPlayerOwnership,
@@ -154,4 +155,66 @@ export async function removeFromRoster(
   if (!existing) throw err(404, 'Player not found in this tournament roster');
 
   return tournamentRepository.removePlayerFromRoster(tournamentId, playerId);
+}
+
+// ---------------------------------------------------------------------------
+// Detail (aggregate view)
+// ---------------------------------------------------------------------------
+
+export async function getTournamentDetail(tournamentId: string, userId: string) {
+  await assertTournamentOwnership(tournamentId, userId);
+
+  const [tournament, matches, roster, playerStats] = await prisma.$transaction([
+    prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      include: { ownerTeam: { select: { id: true, name: true, logoUrl: true } } },
+    }),
+    prisma.match.findMany({
+      where: { tournamentId },
+      orderBy: { matchDate: 'desc' },
+      include: {
+        homeTeam: { select: { id: true, name: true } },
+        awayTeam: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.tournamentRosterPlayer.findMany({
+      where: { tournamentId },
+      include: {
+        player: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            jerseyNumber: true,
+            position: true,
+            photoUrl: true,
+          },
+        },
+      },
+    }),
+    prisma.tournamentPlayerStat.findMany({
+      where: { tournamentId },
+      include: {
+        player: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            jerseyNumber: true,
+            position: true,
+          },
+        },
+      },
+      orderBy: { goals: 'desc' },
+    }),
+  ]);
+
+  if (!tournament) throw err(404, 'Tournament not found');
+
+  return {
+    tournament,
+    matches,
+    roster: roster.map((r) => r.player),
+    playerStats,
+  };
 }

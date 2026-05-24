@@ -1,0 +1,1 @@
+- [Design Patterns](project-design-patterns.md) — card tokens, tab styles, badge colors, modal structure, jersey badges, empty states, API flow conventions

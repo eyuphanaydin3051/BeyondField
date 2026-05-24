@@ -32,6 +32,17 @@ export async function createMatch(req: Request, res: Response): Promise<void> {
   }
 }
 
+export async function updateMatch(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const id = req.params['id'] as string;
+    const data = await matchService.updateMatch(id, userId, req.body);
+    res.status(200).json({ status: 'success', data });
+  } catch (e) {
+    fail(res, e);
+  }
+}
+
 export async function deleteMatch(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user!.userId;

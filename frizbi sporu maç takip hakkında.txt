@@ -1,0 +1,41 @@
+frizbi sporu maç takip hakkında
+sayı esnasında tutulan istatistikler: 
+ofans: başarılı pas, drop, Throaway(başarısız pas), asist, goal, pas ağı (kim hangi oyuncuya pas attı)
+defans: Blok, pull atan oyuncu, pull atan oyuncunun pull süresi, callahan,
+genel: sayıya giren oyuncular, olay geçmişi (şuanda çok detay olduğu için sonra eklenecek ama veri depolamada uygun bir yer ver),
+
+genel akış
+ 
+sayıya hücum olarak başlama senaryosu:
+sayıya giren yedi oyuncu seçilir 
+youtube videosunun altında bu yedi oyuncu önce handlerlar sonra cutterlar olucak şekilde sıralanır hadnler ve cutter oyuncuları kendi aralarında maçta kim çok pas atmışsa ona göre sıralanır (eğer maçta atılan pas sayıları aynıysa alafabeye bakılır) (bu sıralama sayı aktifken değişmez sayı başındaki sıralama hep sabittir) bu oyuncular arasından diski yerden alıcak oyuncu seçimi yapılır. diski yerden alan oyuncu şeçilince o oyuncunun kartında pas hatası/throaway butonu belirir bu butona basıldığında oyuncuya +1 hatalı pas eklenir ve defans durumuna döner takım. elinde disk olmayan oyuncuların kartlarında ise pası aldı,drop ve goal butonu belirir
+pası aldı butonu: bu butona basıldığında örnek olarak disk A oyuncusunda ve B oyuncusunun pası aldı butonuna basıldı
+	1) elinde disk olan oyuncu b oyuncusu olur ve A oyuncusunun kartı elinde disk olmayan oyuncuların kartına döner
+	2) A oyuncusuna +1 başarılı pas kaydedilir
+	3) B oyuncusuna +1 başarılı Catch (yakalama kaydedilir)
+	4) pas ağı için A oyuncusunun B oyuncusuna başarılı pas attığı kaydedilir
+	5) bu aksiyonun youtube videosunda ne zaman gerçekleştiği kaydedilir
+Drop butonu: bu butona basıldığında örnek olarak A oyuncusundayken disk B oyuncusunun drop butonuna basılırsa
+	1) takım defans olur defans butonları belirir
+	2) A oyuncusuna +1 başarılı pas ( drop olduğu için A oyuncusu başarılı pas atmıştır ama B oyuncusu pası düşürmüştür)
+	3) B oyuncusu +1 başarısız catch
+	4) pas ağı için A oyuncusunun B oyuncusuna başarılı pas attığı kaydedilir
+	5) bu aksiyonun youtube videosunda ne zaman gerçekleştiği kaydedilir
+Goal butonu: bu butona basıldığında örnek olarak A oyuncusu diske sahipken B oyuncusundaki Goal butonuna basılırsa 
+	1) A oyuncusu +1 başarılı pas ve +1 Asist
+	2) b oyuncusu +1 başarılı catch ve +1 sayı
+	3) pas ağı için A oyuncusunun B oyuncusuna başarılı pas attığı kaydedilir
+	4) bu aksiyonun youtube videosunda ne zaman gerçekleştiği kaydedilir
+	5) sayı biter ve yeni sayı başlatılır
+Defans başlangıç senaryosu
+
+Takımın sayıya defans başlayacağı seçildiğinde pull atacak oyuncu seçiminin yapılması istenir pulu atan oyuncu seçildiğinde pull süresini başlat butonu belirir ve bu buton basıldığında pull süresi akamaya başlar bu butona tekrar basıldığında süre durur ve pullun başarılı olup olmadığı sorusu sorulur (bu sorunun cevabının bir etkisi yoktur) bu soru cevaplandıktan sonra oyuncu kartlarında callahan ve blok tuşları belirir ve ekranın müsait bir bölümünde de rakip takımın aksiyon butonları belirir
+rakip takım aksiyon butonları:
+rakip goal: rakip sayı alırsa bu butona basılır ve rakibin skoruna bir eklenir ve yeni sayıya başlanır
+rakip hata yaptı: bu butona basıldığında bizim takım ofansa geçer ve ofansa geçişte diski yerden alacak oyuncu seçiminden devam edilir
+
+blok butonu: bu butona basıldığında takımımız defanstan hücuma geçer ve hangi oyuncu Blok yaptıysa o oyuncuya +1 Blok ham verisi eklenir
+Callahan butonu: bu butona basıldığında sayı biter ve bizim takımımızın skoru bir artar, ayrıca callahan yapan sporcuya +1 Callahan,+1 Sayı,+1 Blok eklenir ve callahan ile alınan sayılarda asist yoktur
+
+bir sayıdaki aksiyonlar bu şekildedir rakip veya takımımız sayı almadığı sürece aynı sayı devam eder sadece hücum ve defans döngüleri arasında değişimler olabilir maç bitince bu ham veriler kaydedilir ve bu ham verilerden hesaplamalar yapılır
+	

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
+import YouTube from 'react-youtube'
 import apiClient from '../lib/apiClient'
 import { useAppStore } from '../store/appStore'
 import type { Player } from '../types'
@@ -41,7 +42,7 @@ async function recordEventApi(
   actionType: string,
   playerId: string,
   secondaryPlayerId?: string,
-  opts?: { scoreUs?: number; scoreThem?: number },
+  opts?: { scoreUs?: number; scoreThem?: number; videoTimestampSeconds?: number },
 ): Promise<void> {
   await apiClient.post(`/api/matches/${matchId}/events`, {
     playerId,
@@ -49,6 +50,7 @@ async function recordEventApi(
     actionType,
     scoreUsAtEvent: opts?.scoreUs,
     scoreThemAtEvent: opts?.scoreThem,
+    videoTimestampSeconds: opts?.videoTimestampSeconds,
   })
 }
 
@@ -139,6 +141,21 @@ export default function MatchTracking() {
   const [injuryOutPlayer, setInjuryOutPlayer] = useState<Player | null>(null)
   const [playerPickerFor, setPlayerPickerFor] = useState<'block' | 'callahan' | 'pickup' | null>(null)
 
+  // ── YouTube state ────────────────────────────────────────────────────────
+  const [youtubeVideoId, setYoutubeVideoId] = useState<string>('')
+  const [showYoutubePanel, setShowYoutubePanel] = useState(false)
+  const [youtubeInput, setYoutubeInput] = useState<string>('')
+  const [savingVideo, setSavingVideo] = useState(false)
+  const ytPlayerRef = useRef<any>(null)
+
+  // Pull current timestamp from YouTube player (returns undefined if no video)
+  const vts = useCallback((): number | undefined => {
+    const player = ytPlayerRef.current
+    if (!player || typeof player.getCurrentTime !== 'function') return undefined
+    const t = player.getCurrentTime() as number
+    return t > 0 ? Math.floor(t) : undefined
+  }, [])
+
   // ── Pull timer ref ──────────────────────────────────────────────────────
   const pullTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -160,6 +177,8 @@ export default function MatchTracking() {
         setMatch(matchData)
         setHomeScore(matchData?.homeScore ?? 0)
         setAwayScore(matchData?.awayScore ?? 0)
+        setYoutubeVideoId(matchData?.youtubeVideoId ?? '')
+        setYoutubeInput(matchData?.youtubeVideoId ?? '')
         setPlayers(playersRes.data.data)
         if (matchData?.status === 'SCHEDULED') {
           await apiClient.post(`/api/matches/${matchId}/start`)
@@ -270,7 +289,7 @@ export default function MatchTracking() {
     setActionLoading(true)
     try {
       pushHistory()
-      await recordEventApi(matchId, 'COMPLETION', activePasserId, receiverId)
+      await recordEventApi(matchId, 'COMPLETION', activePasserId, receiverId, { videoTimestampSeconds: vts() })
       setActivePasserId(receiverId)
     } finally {
       setActionLoading(false)
@@ -287,7 +306,7 @@ export default function MatchTracking() {
     setActionLoading(true)
     try {
       pushHistory()
-      await recordEventApi(matchId, 'THROWAWAY', activePasserId)
+      await recordEventApi(matchId, 'THROWAWAY', activePasserId, undefined, { videoTimestampSeconds: vts() })
       setGameMode('DEFENSE')
       setIsPullPhase(false)
       setActivePasserId(null)
@@ -301,7 +320,7 @@ export default function MatchTracking() {
     setActionLoading(true)
     try {
       pushHistory()
-      await recordEventApi(matchId, 'BLOCK', playerId)
+      await recordEventApi(matchId, 'BLOCK', playerId, undefined, { videoTimestampSeconds: vts() })
       setGameMode('OFFENSE')
       setActivePasserId(null)
       setPlayerPickerFor(null)
@@ -319,6 +338,7 @@ export default function MatchTracking() {
       await recordEventApi(matchId, 'CALLAHAN', playerId, undefined, {
         scoreUs: newHomeScore,
         scoreThem: awayScore,
+        videoTimestampSeconds: vts(),
       })
       setPlayerPickerFor(null)
       await finishPoint('US', newHomeScore, awayScore)
@@ -346,12 +366,14 @@ export default function MatchTracking() {
         await recordEventApi(matchId, 'GOAL', activePasserId, undefined, {
           scoreUs: newHome,
           scoreThem: awayScore,
+          videoTimestampSeconds: vts(),
         })
       } else {
         newAway = awayScore + 1
         await recordEventApi(matchId, 'OPPONENT_GOAL', 'opponent', undefined, {
           scoreUs: homeScore,
           scoreThem: newAway,
+          videoTimestampSeconds: vts(),
         })
       }
       await finishPoint(who, newHome, newAway)
@@ -369,6 +391,7 @@ export default function MatchTracking() {
       await recordEventApi(matchId, 'OPPONENT_GOAL', 'opponent', undefined, {
         scoreUs: homeScore,
         scoreThem: newAway,
+        videoTimestampSeconds: vts(),
       })
       await finishPoint('THEM', homeScore, newAway)
     } finally {
@@ -411,6 +434,8 @@ export default function MatchTracking() {
         matchId,
         inBounds ? 'PULL_SUCCESS' : 'PULL_FAIL',
         pullingPlayerId,
+        undefined,
+        { videoTimestampSeconds: vts() },
       )
       setIsPullPhase(false)
       setPullingPlayerId(null)
@@ -438,6 +463,26 @@ export default function MatchTracking() {
     setInjuryStep('out')
     setShowInjuryModal(false)
   }, [injuryOutPlayer, activePasserId])
+
+  // ── YouTube video save ───────────────────────────────────────────────────
+
+  const handleSaveVideo = useCallback(async () => {
+    if (!matchId) return
+    setSavingVideo(true)
+    try {
+      // Extract video ID from full URL or use as-is
+      let vid = youtubeInput.trim()
+      const urlMatch = vid.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/)
+      if (urlMatch) vid = urlMatch[1]
+      await apiClient.put(`/api/matches/${matchId}`, { youtubeVideoId: vid })
+      setYoutubeVideoId(vid)
+      setShowYoutubePanel(false)
+    } catch {
+      // ignore — video is optional
+    } finally {
+      setSavingVideo(false)
+    }
+  }, [matchId, youtubeInput])
 
   // ── Finish match ──────────────────────────────────────────────────────────
 
@@ -797,6 +842,60 @@ export default function MatchTracking() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
+
+        {/* ── YouTube panel ────────────────────────────────────────────── */}
+        {showYoutubePanel ? (
+          <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-300">📹 YouTube Video</span>
+              <button type="button" onClick={() => setShowYoutubePanel(false)} className="ml-auto text-xs text-slate-500 hover:text-slate-300">✕</button>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={youtubeInput}
+                onChange={(e) => setYoutubeInput(e.target.value)}
+                placeholder="Video ID veya URL"
+                className="flex-1 bg-white/[0.06] border border-white/[0.10] rounded-xl px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-green-500/50"
+              />
+              <button
+                type="button"
+                onClick={() => void handleSaveVideo()}
+                disabled={savingVideo || !youtubeInput.trim()}
+                className="px-4 py-2 bg-green-500 hover:bg-green-400 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all"
+              >
+                {savingVideo ? '...' : 'Kaydet'}
+              </button>
+            </div>
+          </div>
+        ) : youtubeVideoId ? (
+          <div className="rounded-2xl overflow-hidden border border-white/[0.08]">
+            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+              <YouTube
+                videoId={youtubeVideoId}
+                opts={{ width: '100%', height: '100%', playerVars: { controls: 1, rel: 0 } }}
+                onReady={(e) => { ytPlayerRef.current = e.target }}
+                className="absolute inset-0 w-full h-full"
+                iframeClassName="w-full h-full"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => { setShowYoutubePanel(true); setYoutubeInput(youtubeVideoId) }}
+              className="w-full py-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              📹 Video değiştir
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowYoutubePanel(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/[0.03] border border-dashed border-white/[0.10] rounded-2xl text-xs text-slate-500 hover:text-slate-400 hover:border-white/[0.18] transition-all"
+          >
+            📹 YouTube video bağla
+          </button>
+        )}
 
         {/* ── Point + injury row ───────────────────────────────────────── */}
         <div className="flex items-center justify-between">

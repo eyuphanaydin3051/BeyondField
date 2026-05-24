@@ -239,6 +239,43 @@
       "deleteFailed": "Could not delete tournament"
     }
   },
+  "tournamentDetail": {
+    "tabs": {
+      "matches": "Matches",
+      "stats": "Stats",
+      "roster": "Roster"
+    },
+    "newMatch": {
+      "button": "New Match",
+      "title": "Add New Match",
+      "opponentLabel": "Opponent Team",
+      "opponentPlaceholder": "Enter opponent name",
+      "create": "Create Match",
+      "creating": "Creating..."
+    },
+    "stats": {
+      "wins": "Wins",
+      "losses": "Losses",
+      "pointDiff": "Point Diff",
+      "noStats": "No stats yet. Start match tracking.",
+      "columns": {
+        "player": "Player",
+        "points": "Pts",
+        "goals": "G",
+        "assists": "A",
+        "blocks": "B",
+        "throwaways": "TA",
+        "drops": "D",
+        "callahans": "Cal"
+      }
+    },
+    "roster": {
+      "empty": "Roster is empty."
+    },
+    "matches": {
+      "empty": "No matches yet."
+    }
+  },
   "settings": {
     "title": "Settings",
     "sections": {

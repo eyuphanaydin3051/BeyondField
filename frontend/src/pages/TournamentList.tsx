@@ -1,4 +1,5 @@
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
 import apiClient from '../lib/apiClient'
@@ -201,16 +202,24 @@ export default function TournamentList() {
           {items.map((tr) => {
             const status = getStatus(tr)
             return (
-              <div key={tr.id} className="bg-[#0f1117] border border-white/[0.08] hover:border-white/[0.14] rounded-2xl p-5 transition-all duration-200 flex flex-col gap-4">
+              <Link
+                key={tr.id}
+                to={`/tournaments/${tr.id}`}
+                className="bg-[#0f1117] border border-white/[0.08] hover:border-green-500/30 rounded-2xl p-5 transition-all duration-200 flex flex-col gap-4 group"
+              >
                 <div className="flex justify-between items-start gap-2">
-                  <div>
-                    <h3 className="font-bold text-base text-white leading-snug">{tr.name}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-base text-white leading-snug group-hover:text-green-400 transition-colors truncate">{tr.name}</h3>
                     <span className={`inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusStyle[status]}`}>
                       {statusLabel[status]}
                     </span>
                   </div>
-                  <button type="button" onClick={() => handleDelete(tr.id)} disabled={deletingId === tr.id}
-                    className="text-red-400 hover:text-red-300 text-xs font-medium disabled:opacity-50 transition-colors flex-shrink-0 mt-0.5">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); handleDelete(tr.id) }}
+                    disabled={deletingId === tr.id}
+                    className="text-red-400 hover:text-red-300 text-xs font-medium disabled:opacity-50 transition-colors flex-shrink-0 mt-0.5"
+                  >
                     {deletingId === tr.id ? t('common.deleting') : t('common.delete')}
                   </button>
                 </div>
@@ -227,7 +236,7 @@ export default function TournamentList() {
                     </div>
                   )}
                 </div>
-              </div>
+              </Link>
             )
           })}
         </div>

@@ -239,6 +239,43 @@
       "deleteFailed": "Turnuva silinemedi"
     }
   },
+  "tournamentDetail": {
+    "tabs": {
+      "matches": "Maçlar",
+      "stats": "İstatistikler",
+      "roster": "Kadro"
+    },
+    "newMatch": {
+      "button": "Yeni Maç",
+      "title": "Yeni Maç Ekle",
+      "opponentLabel": "Rakip Takım",
+      "opponentPlaceholder": "Rakip adını girin",
+      "create": "Maç Oluştur",
+      "creating": "Oluşturuluyor..."
+    },
+    "stats": {
+      "wins": "Galibiyet",
+      "losses": "Mağlubiyet",
+      "pointDiff": "Sayı Farkı",
+      "noStats": "Henüz istatistik yok. Maç takibi başlatın.",
+      "columns": {
+        "player": "Oyuncu",
+        "points": "Puan",
+        "goals": "G",
+        "assists": "A",
+        "blocks": "B",
+        "throwaways": "Hata",
+        "drops": "Düş",
+        "callahans": "Cal"
+      }
+    },
+    "roster": {
+      "empty": "Kadro boş."
+    },
+    "matches": {
+      "empty": "Henüz maç yok."
+    }
+  },
   "settings": {
     "title": "Ayarlar",
     "sections": {

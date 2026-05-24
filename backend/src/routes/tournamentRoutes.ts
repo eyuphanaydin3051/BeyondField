@@ -15,6 +15,7 @@ teamTournamentRoutes.post(
 
 export const tournamentRoutes = Router();
 tournamentRoutes.use(authMiddleware);
+tournamentRoutes.get('/:id', tournamentController.getTournamentDetail);
 tournamentRoutes.put('/:id', tournamentController.updateTournament);
 tournamentRoutes.delete('/:id', tournamentController.deleteTournament);
 tournamentRoutes.get('/:id/roster', tournamentController.getRoster);
