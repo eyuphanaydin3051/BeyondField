@@ -329,10 +329,14 @@
       "undo": "Geri Al",
       "opponentScore": "Rakip Sayı",
       "opponentTurnover": "Rakip Çevirdi",
+      "opponentError": "Rakip Hata Yaptı",
       "block": "Block",
       "callahan": "Callahan",
       "finishMatch": "Maçı Bitir",
-      "injurySub": "Sakatlık"
+      "injurySub": "Sakatlık",
+      "passReceived": "PAS ALDI",
+      "drop": "DROP",
+      "goal": "GOOL"
     },
     "pull": {
       "selectPuller": "Kim pull atacak?",
@@ -364,6 +368,10 @@
       "button": "Maçı Bitir",
       "cancel": "İptal"
     },
+    "diskiAl": "DİSKİ AL",
+    "liveEvents": "CANLI OLAY GEÇMİŞİ",
+    "noEventsYet": "Henüz olay yok",
+    "addVideo": "YouTube video bağla",
     "processing": "İşleniyor...",
     "point": "Sayı #{{number}}",
     "backWarning": "Bu sayı için girilen veriler kaybolacak. Devam etmek istiyor musunuz?"

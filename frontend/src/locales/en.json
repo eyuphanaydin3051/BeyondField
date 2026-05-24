@@ -329,10 +329,14 @@
       "undo": "Undo",
       "opponentScore": "Opponent Score",
       "opponentTurnover": "Opponent Turnover",
+      "opponentError": "Opponent Error",
       "block": "Block",
       "callahan": "Callahan",
       "finishMatch": "Finish Match",
-      "injurySub": "Injury"
+      "injurySub": "Injury",
+      "passReceived": "PASS CAUGHT",
+      "drop": "DROP",
+      "goal": "GOAL"
     },
     "pull": {
       "selectPuller": "Who will pull?",
@@ -364,6 +368,10 @@
       "button": "Finish Match",
       "cancel": "Cancel"
     },
+    "diskiAl": "PICK UP DISC",
+    "liveEvents": "LIVE EVENT FEED",
+    "noEventsYet": "No events yet",
+    "addVideo": "Link YouTube video",
     "processing": "Processing...",
     "point": "Point #{{number}}",
     "backWarning": "Data entered for this point will be lost. Do you want to continue?"

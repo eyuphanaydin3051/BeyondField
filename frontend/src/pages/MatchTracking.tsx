@@ -132,6 +132,8 @@ export default function MatchTracking() {
   const [historyStack, setHistoryStack] = useState<HistoryEntry[]>([])
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('ALL')
   const [pointCount, setPointCount] = useState(0)
+  const [liveEvents, setLiveEvents] = useState<string[]>([])
+  const [archivedPoints, setArchivedPoints] = useState<Array<{ index: number; whoScored: 'US' | 'THEM'; homeScore: number; awayScore: number }>>([])
 
   // ── Modal state ─────────────────────────────────────────────────────────
   const [showFinishModal, setShowFinishModal] = useState(false)
@@ -208,6 +210,10 @@ export default function MatchTracking() {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
+  const pushLiveEvent = useCallback((text: string) => {
+    setLiveEvents((prev) => [text, ...prev].slice(0, 20))
+  }, [])
+
   const pushHistory = useCallback(() => {
     setHistoryStack((prev) => [
       ...prev,
@@ -273,7 +279,15 @@ export default function MatchTracking() {
     setLastLineup(selectedLineup)
     setHomeScore(newHome)
     setAwayScore(newAway)
-    setPointCount((n) => n + 1)
+    setPointCount((n) => {
+      const next = n + 1
+      setArchivedPoints((prev) => [
+        ...prev,
+        { index: next, whoScored: who, homeScore: newHome, awayScore: newAway },
+      ])
+      return next
+    })
+    setLiveEvents([])
     setHistoryStack([])
     setTrackingStep('roster')
     setSelectedLineup([])
@@ -289,63 +303,89 @@ export default function MatchTracking() {
     setActionLoading(true)
     try {
       pushHistory()
+      const thrower = selectedLineup.find((p) => p.id === activePasserId)
+      const receiver = selectedLineup.find((p) => p.id === receiverId)
       await recordEventApi(matchId, 'COMPLETION', activePasserId, receiverId, { videoTimestampSeconds: vts() })
+      pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Completion → ${receiver?.firstName} ${receiver?.lastName}`)
       setActivePasserId(receiverId)
     } finally {
       setActionLoading(false)
     }
-  }, [matchId, activePasserId, pushHistory])
+  }, [matchId, activePasserId, selectedLineup, pushHistory, pushLiveEvent, vts])
 
   const handlePickup = useCallback((playerId: string) => {
     setActivePasserId(playerId)
     setPlayerPickerFor(null)
   }, [])
 
-  const handleThrowaway = useCallback(async () => {
+  const handleDrop = useCallback(async (receiverId: string) => {
     if (!matchId || !activePasserId) return
     setActionLoading(true)
     try {
       pushHistory()
-      await recordEventApi(matchId, 'THROWAWAY', activePasserId, undefined, { videoTimestampSeconds: vts() })
+      const thrower = selectedLineup.find((p) => p.id === activePasserId)
+      const receiver = selectedLineup.find((p) => p.id === receiverId)
+      await recordEventApi(matchId, 'DROP', receiverId, activePasserId, { videoTimestampSeconds: vts() })
+      pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Hata/Pas → ${receiver?.firstName} ${receiver?.lastName}: Drop`)
       setGameMode('DEFENSE')
       setIsPullPhase(false)
       setActivePasserId(null)
     } finally {
       setActionLoading(false)
     }
-  }, [matchId, activePasserId, pushHistory])
+  }, [matchId, activePasserId, selectedLineup, pushHistory, pushLiveEvent, vts])
+
+  const handleThrowaway = useCallback(async () => {
+    if (!matchId || !activePasserId) return
+    setActionLoading(true)
+    try {
+      pushHistory()
+      const thrower = selectedLineup.find((p) => p.id === activePasserId)
+      await recordEventApi(matchId, 'THROWAWAY', activePasserId, undefined, { videoTimestampSeconds: vts() })
+      pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Hata/Pas`)
+      setGameMode('DEFENSE')
+      setIsPullPhase(false)
+      setActivePasserId(null)
+    } finally {
+      setActionLoading(false)
+    }
+  }, [matchId, activePasserId, selectedLineup, pushHistory, pushLiveEvent, vts])
 
   const handleBlock = useCallback(async (playerId: string) => {
     if (!matchId) return
     setActionLoading(true)
     try {
       pushHistory()
+      const blocker = selectedLineup.find((p) => p.id === playerId)
       await recordEventApi(matchId, 'BLOCK', playerId, undefined, { videoTimestampSeconds: vts() })
+      pushLiveEvent(`${blocker?.firstName} ${blocker?.lastName}: Blok`)
       setGameMode('OFFENSE')
       setActivePasserId(null)
       setPlayerPickerFor(null)
     } finally {
       setActionLoading(false)
     }
-  }, [matchId, pushHistory])
+  }, [matchId, selectedLineup, pushHistory, pushLiveEvent, vts])
 
   const handleCallahan = useCallback(async (playerId: string) => {
     if (!matchId) return
     setActionLoading(true)
     try {
       pushHistory()
+      const scorer = selectedLineup.find((p) => p.id === playerId)
       const newHomeScore = homeScore + 1
       await recordEventApi(matchId, 'CALLAHAN', playerId, undefined, {
         scoreUs: newHomeScore,
         scoreThem: awayScore,
         videoTimestampSeconds: vts(),
       })
+      pushLiveEvent(`${scorer?.firstName} ${scorer?.lastName}: Callahan`)
       setPlayerPickerFor(null)
       await finishPoint('US', newHomeScore, awayScore)
     } finally {
       setActionLoading(false)
     }
-  }, [matchId, homeScore, awayScore, pushHistory, finishPoint])
+  }, [matchId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, finishPoint, vts])
 
   const handleOpponentTurnover = useCallback(() => {
     pushHistory()
@@ -359,6 +399,7 @@ export default function MatchTracking() {
     setActionLoading(true)
     try {
       pushHistory()
+      const activePlayer = selectedLineup.find((p) => p.id === activePasserId)
       let newHome = homeScore
       let newAway = awayScore
       if (who === 'US') {
@@ -368,6 +409,7 @@ export default function MatchTracking() {
           scoreThem: awayScore,
           videoTimestampSeconds: vts(),
         })
+        pushLiveEvent(`${activePlayer?.firstName} ${activePlayer?.lastName}: Gol`)
       } else {
         newAway = awayScore + 1
         await recordEventApi(matchId, 'OPPONENT_GOAL', 'opponent', undefined, {
@@ -380,7 +422,7 @@ export default function MatchTracking() {
     } finally {
       setActionLoading(false)
     }
-  }, [matchId, activePasserId, homeScore, awayScore, pushHistory, finishPoint])
+  }, [matchId, activePasserId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, finishPoint, vts])
 
   const handleOpponentScore = useCallback(async () => {
     if (!matchId) return
@@ -398,6 +440,26 @@ export default function MatchTracking() {
       setActionLoading(false)
     }
   }, [matchId, homeScore, awayScore, pushHistory, finishPoint])
+
+  const handleGoalToPlayer = useCallback(async (receiverId: string) => {
+    if (!matchId || !activePasserId) return
+    setActionLoading(true)
+    try {
+      pushHistory()
+      const thrower = selectedLineup.find((p) => p.id === activePasserId)
+      const receiver = selectedLineup.find((p) => p.id === receiverId)
+      const newHomeScore = homeScore + 1
+      await recordEventApi(matchId, 'GOAL', activePasserId, receiverId, {
+        scoreUs: newHomeScore,
+        scoreThem: awayScore,
+        videoTimestampSeconds: vts(),
+      })
+      pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Asist → ${receiver?.firstName} ${receiver?.lastName}: Gol`)
+      await finishPoint('US', newHomeScore, awayScore)
+    } finally {
+      setActionLoading(false)
+    }
+  }, [matchId, activePasserId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, finishPoint, vts])
 
   const handleUndo = useCallback(async () => {
     if (!matchId || historyStack.length === 0) return
@@ -815,42 +877,46 @@ export default function MatchTracking() {
   const pullTimerDisplay = (pullTimerMs / 1000).toFixed(2) + 's'
 
   return (
-    <div className="min-h-screen bg-[#090c10] pb-4">
+    <div className="h-screen bg-[#090c10] flex flex-col overflow-hidden">
       {actionLoading && <ActionLoadingOverlay message={t('tracking.processing')} />}
 
-      {/* ── Sticky top bar ───────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-20 bg-[#090c10]/95 backdrop-blur-sm border-b border-white/[0.06] px-4 py-3">
-        <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
+      {/* ── Top bar ── */}
+      <div className="flex-shrink-0 z-20 bg-[#090c10]/95 backdrop-blur-sm border-b border-white/[0.06] px-3 py-2 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setShowBackWarning(true)}
+          className="text-sm font-medium text-slate-400 hover:text-slate-100 transition-colors whitespace-nowrap"
+        >
+          ←
+        </button>
+        <ScoreBar />
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setShowBackWarning(true)}
-            className="text-sm font-medium text-slate-400 hover:text-slate-100 transition-colors whitespace-nowrap"
+            onClick={() => { setInjuryStep('out'); setShowInjuryModal(true) }}
+            className="px-2 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all"
           >
-            ← {t('tracking.roster.title')}
+            ⚕️
           </button>
-
-          <ScoreBar />
-
           <button
             type="button"
             onClick={() => setShowFinishModal(true)}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-all whitespace-nowrap"
+            className="px-2 py-1.5 rounded-lg text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-all whitespace-nowrap"
           >
             {t('tracking.actions.finishMatch')}
           </button>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
+      {/* ── Main: video (left) + event history (right) ── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* ── YouTube panel ────────────────────────────────────────────── */}
-        {showYoutubePanel ? (
-          <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-300">📹 YouTube Video</span>
-              <button type="button" onClick={() => setShowYoutubePanel(false)} className="ml-auto text-xs text-slate-500 hover:text-slate-300">✕</button>
-            </div>
-            <div className="flex gap-2">
+        {/* Left: video area */}
+        <div className="flex flex-col overflow-hidden" style={{ flex: '1 1 65%' }}>
+
+          {/* YouTube video or placeholder */}
+          {showYoutubePanel ? (
+            <div className="p-3 bg-[#0f1117] border-b border-white/[0.08] flex gap-2 flex-shrink-0">
               <input
                 type="text"
                 value={youtubeInput}
@@ -864,13 +930,12 @@ export default function MatchTracking() {
                 disabled={savingVideo || !youtubeInput.trim()}
                 className="px-4 py-2 bg-green-500 hover:bg-green-400 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all"
               >
-                {savingVideo ? '...' : 'Kaydet'}
+                {savingVideo ? '...' : t('common.save')}
               </button>
+              <button type="button" onClick={() => setShowYoutubePanel(false)} className="px-2 text-slate-500 hover:text-slate-300 text-sm">✕</button>
             </div>
-          </div>
-        ) : youtubeVideoId ? (
-          <div className="rounded-2xl overflow-hidden border border-white/[0.08]">
-            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+          ) : youtubeVideoId ? (
+            <div className="relative w-full flex-shrink-0" style={{ paddingBottom: '56.25%' }}>
               <YouTube
                 videoId={youtubeVideoId}
                 opts={{ width: '100%', height: '100%', playerVars: { controls: 1, rel: 0 } }}
@@ -878,269 +943,239 @@ export default function MatchTracking() {
                 className="absolute inset-0 w-full h-full"
                 iframeClassName="w-full h-full"
               />
+              <button
+                type="button"
+                onClick={() => { setShowYoutubePanel(true); setYoutubeInput(youtubeVideoId) }}
+                className="absolute bottom-1 right-1 px-2 py-0.5 text-[10px] text-slate-400 bg-black/60 rounded hover:bg-black/80 transition-all"
+              >
+                📹
+              </button>
             </div>
+          ) : (
             <button
               type="button"
-              onClick={() => { setShowYoutubePanel(true); setYoutubeInput(youtubeVideoId) }}
-              className="w-full py-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              onClick={() => setShowYoutubePanel(true)}
+              className="flex-shrink-0 w-full flex items-center justify-center gap-2 py-10 bg-white/[0.02] border-b border-white/[0.06] text-xs text-slate-500 hover:text-slate-400 transition-all"
             >
-              📹 Video değiştir
+              📹 {t('tracking.addVideo')}
             </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowYoutubePanel(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/[0.03] border border-dashed border-white/[0.10] rounded-2xl text-xs text-slate-500 hover:text-slate-400 hover:border-white/[0.18] transition-all"
-          >
-            📹 YouTube video bağla
-          </button>
-        )}
+          )}
 
-        {/* ── Point + injury row ───────────────────────────────────────── */}
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-bold text-slate-400">
-            {t('tracking.point', { number: pointCount + 1 })}
-          </span>
-          <button
-            type="button"
-            onClick={() => { setInjuryStep('out'); setShowInjuryModal(true) }}
-            className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all"
-          >
-            {t('tracking.actions.injurySub')} ⚕️
-          </button>
-        </div>
-
-        {/* ── DEFENSE: Pull phase ───────────────────────────────────────── */}
-        {gameMode === 'DEFENSE' && isPullPhase && (
-          <div className="space-y-4">
-            {!pullingPlayerId ? (
-              <>
-                <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4">
-                  <h2 className="text-base font-bold text-slate-100 mb-3">
-                    {t('tracking.pull.selectPuller')}
-                  </h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {/* Pull phase UI (shown in left area when in pull phase) */}
+          {gameMode === 'DEFENSE' && isPullPhase && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {!pullingPlayerId ? (
+                <div>
+                  <p className="text-sm font-semibold text-slate-300 mb-3">{t('tracking.pull.selectPuller')}</p>
+                  <div className="grid grid-cols-3 gap-2">
                     {selectedLineup.map((player) => (
                       <button
                         key={player.id}
                         type="button"
                         onClick={() => handleSelectPuller(player.id)}
-                        className="flex items-center gap-2.5 p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-red-500/10 hover:border-red-500/30 transition-all"
+                        className="flex items-center gap-2 p-2.5 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-red-500/10 hover:border-red-500/30 transition-all"
                       >
                         <JerseyBadge number={player.jerseyNumber} />
-                        <span className="text-sm font-medium text-slate-200 truncate">
-                          {player.firstName} {player.lastName}
-                        </span>
+                        <span className="text-xs font-medium text-slate-200 truncate">{player.firstName} {player.lastName}</span>
                       </button>
                     ))}
                   </div>
                 </div>
-              </>
-            ) : (
-              <div className="bg-[#0f1117] border border-red-500/20 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center gap-3">
-                  <JerseyBadge number={pullingPlayer?.jerseyNumber ?? 0} />
-                  <div>
-                    <p className="text-sm text-slate-400">{t('tracking.pull.selectPuller')}</p>
-                    <p className="text-base font-bold text-white">
-                      {pullingPlayer?.firstName} {pullingPlayer?.lastName}
-                    </p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <JerseyBadge number={pullingPlayer?.jerseyNumber ?? 0} />
+                    <p className="text-sm font-bold text-white">{pullingPlayer?.firstName} {pullingPlayer?.lastName}</p>
+                  </div>
+                  <div className="bg-black/30 rounded-xl p-3 text-center">
+                    <p className="text-xs text-slate-500 mb-1">{t('tracking.pull.hangTime')}</p>
+                    <p className="text-3xl font-mono font-black text-white tabular-nums">{pullTimerDisplay}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPullTimerRunning((r) => !r)}
+                    className={[
+                      'w-full py-2.5 rounded-xl text-sm font-bold transition-all',
+                      pullTimerRunning
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                        : 'bg-green-500/20 text-green-400 border border-green-500/40',
+                    ].join(' ')}
+                  >
+                    {pullTimerRunning ? t('tracking.pull.stopTimer') : t('tracking.pull.startTimer')}
+                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleEndPull(true)}
+                      className="py-2.5 rounded-xl text-sm font-bold bg-green-500/15 text-green-400 border border-green-500/30 hover:bg-green-500/25 transition-all"
+                    >
+                      {t('tracking.pull.inBounds')} ✓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleEndPull(false)}
+                      className="py-2.5 rounded-xl text-sm font-bold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-all"
+                    >
+                      {t('tracking.pull.outOfBounds')} ✗
+                    </button>
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+        </div>
 
-                {/* Timer */}
-                <div className="bg-black/30 rounded-xl p-4 text-center">
-                  <p className="text-xs text-slate-500 mb-1">{t('tracking.pull.hangTime')}</p>
-                  <p className="text-4xl font-mono font-black text-white tabular-nums">
-                    {pullTimerDisplay}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setPullTimerRunning((r) => !r)}
-                  className={[
-                    'w-full py-3 rounded-xl text-sm font-bold transition-all',
-                    pullTimerRunning
-                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30'
-                      : 'bg-green-500/20 text-green-400 border border-green-500/40 hover:bg-green-500/30',
-                  ].join(' ')}
-                >
-                  {pullTimerRunning ? t('tracking.pull.stopTimer') : t('tracking.pull.startTimer')}
-                </button>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleEndPull(true)}
-                    className="py-3 rounded-xl text-sm font-bold bg-green-500/15 text-green-400 border border-green-500/30 hover:bg-green-500/25 transition-all"
-                  >
-                    {t('tracking.pull.inBounds')} ✓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleEndPull(false)}
-                    className="py-3 rounded-xl text-sm font-bold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-all"
-                  >
-                    {t('tracking.pull.outOfBounds')} ✗
-                  </button>
-                </div>
-              </div>
+        {/* Right: live event history */}
+        <div className="flex flex-col border-l border-white/[0.06]" style={{ flex: '0 0 32%', minWidth: '180px', maxWidth: '280px' }}>
+          <div className="px-3 py-2 border-b border-white/[0.06] flex-shrink-0">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t('tracking.liveEvents')}</p>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {liveEvents.length === 0 && (
+              <p className="text-xs text-slate-600 text-center py-4">{t('tracking.noEventsYet')}</p>
             )}
-          </div>
-        )}
-
-        {/* ── DEFENSE: Live defense (not pull phase) ────────────────────── */}
-        {gameMode === 'DEFENSE' && !isPullPhase && (
-          <div className="space-y-3">
-            <div className="bg-[#0f1117] border border-red-500/20 rounded-2xl p-4">
-              <p className="text-sm font-semibold text-red-400 mb-4">
-                {t('tracking.defense.title')} 🛡️
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPlayerPickerFor('block')}
-                  className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border border-teal-500/30 bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 font-semibold text-sm transition-all"
-                >
-                  <span className="text-2xl">🛡️</span>
-                  {t('tracking.actions.block')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPlayerPickerFor('callahan')}
-                  className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 font-semibold text-sm transition-all"
-                >
-                  <span className="text-2xl">⚡</span>
-                  {t('tracking.actions.callahan')}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpponentTurnover}
-                  className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 text-orange-300 font-semibold text-sm transition-all"
-                >
-                  <span className="text-2xl">🔄</span>
-                  {t('tracking.actions.opponentTurnover')}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleUndo}
-                  disabled={historyStack.length === 0}
-                  className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.07] text-slate-400 font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <span className="text-2xl">↩</span>
-                  {t('tracking.actions.undo')}
-                </button>
+            {liveEvents.map((evt, i) => (
+              <div key={i} className="px-2 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.04]">
+                <p className="text-xs text-slate-300 leading-snug">{evt}</p>
               </div>
-            </div>
+            ))}
           </div>
-        )}
-
-        {/* ── OFFENSE: No passer (need pickup) ─────────────────────────── */}
-        {gameMode === 'OFFENSE' && !activePasserId && (
-          <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4 space-y-3">
-            <h2 className="text-base font-bold text-slate-100">
-              {t('tracking.offense.whoPickedUp')}
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {selectedLineup.map((player) => (
-                <button
-                  key={player.id}
-                  type="button"
-                  onClick={() => setActivePasserId(player.id)}
-                  className="flex items-center gap-2.5 p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-green-500/10 hover:border-green-500/30 transition-all"
-                >
-                  <JerseyBadge number={player.jerseyNumber} />
-                  <span className="text-sm font-medium text-slate-200 truncate">
-                    {player.firstName} {player.lastName}
-                  </span>
-                </button>
-              ))}
+          <div className="p-2 border-t border-white/[0.06] flex-shrink-0 space-y-1">
+            <div className="text-xs text-slate-600 text-center">
+              {t('tracking.point', { number: pointCount + 1 })} · {gameMode === 'OFFENSE' ? '⚡' : '🛡️'}
             </div>
-          </div>
-        )}
-
-        {/* ── OFFENSE: Active passer ────────────────────────────────────── */}
-        {gameMode === 'OFFENSE' && activePasserId && (
-          <div className="space-y-3">
-            {/* Active passer banner */}
-            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 flex items-center gap-3">
-              <span className="text-green-400 text-lg" aria-hidden="true">🥏</span>
-              <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                <JerseyBadge number={activePlayer?.jerseyNumber ?? 0} />
-                <div className="min-w-0">
-                  <p className="text-xs text-slate-400">{t('tracking.offense.whoHasDisk')}</p>
-                  <p className="text-sm font-bold text-green-300 truncate">
-                    {activePlayer?.firstName} {activePlayer?.lastName}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Who to throw to */}
-            <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4 space-y-3">
-              <h2 className="text-base font-bold text-slate-100">
-                {t('tracking.offense.threwTo')}
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {selectedLineup
-                  .filter((p) => p.id !== activePasserId)
-                  .map((player) => (
-                    <button
-                      key={player.id}
-                      type="button"
-                      onClick={() => handleCatch(player.id)}
-                      className="flex items-center gap-2.5 p-3 min-h-[64px] rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-green-500/10 hover:border-green-500/30 transition-all"
-                    >
-                      <JerseyBadge number={player.jerseyNumber} />
-                      <span className="text-sm font-medium text-slate-200 truncate">
-                        {player.firstName} {player.lastName}
-                      </span>
-                    </button>
-                  ))}
-              </div>
-
-              {/* GOAL — receiver already caught, click passer to mark as scorer */}
-              <button
-                type="button"
-                onClick={() => handleScore('US')}
-                className="w-full py-3 rounded-xl text-sm font-bold bg-green-500 hover:bg-green-400 text-white transition-all shadow-lg shadow-green-500/20"
-              >
-                🎯 {t('matches.detail.goals')}!
-              </button>
-            </div>
-
-            {/* Action buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={handleThrowaway}
-                className="py-3 rounded-xl text-sm font-bold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-all"
-              >
-                ❌ {t('tracking.actions.throwaway')}
-              </button>
-              <button
-                type="button"
-                onClick={handleUndo}
-                disabled={historyStack.length === 0}
-                className="py-3 rounded-xl text-sm font-bold bg-white/[0.05] text-slate-400 border border-white/[0.08] hover:bg-white/[0.08] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                ↩ {t('tracking.actions.undo')}
-              </button>
-            </div>
-
-            {/* Opponent score */}
             <button
               type="button"
-              onClick={handleOpponentScore}
-              className="w-full py-3 rounded-xl text-sm font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-all"
+              onClick={handleUndo}
+              disabled={historyStack.length === 0}
+              className="w-full py-1.5 rounded-xl text-xs font-bold bg-white/[0.05] text-slate-400 border border-white/[0.08] hover:bg-white/[0.08] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              ⚠️ {t('tracking.actions.opponentScore')}
+              ↩ {t('tracking.actions.undo')}
             </button>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* ── Bottom: horizontal player cards ── */}
+      {!isPullPhase && (
+        <div className="flex-shrink-0 border-t border-white/[0.08] bg-[#090c10]">
+          <div className="overflow-x-auto">
+            <div className="flex gap-2 p-2.5" style={{ minWidth: 'max-content' }}>
+              {selectedLineup.map((player) => {
+                const isDiskHolder = player.id === activePasserId
+                return (
+                  <div
+                    key={player.id}
+                    className={[
+                      'flex flex-col items-center gap-1 p-2.5 rounded-2xl border transition-all min-w-[100px]',
+                      isDiskHolder
+                        ? 'bg-blue-500/10 border-blue-500/40'
+                        : 'bg-[#0f1117] border-white/[0.08]',
+                    ].join(' ')}
+                  >
+                    <span className="font-mono text-[11px] font-bold text-slate-500">#{player.jerseyNumber}</span>
+                    <p className="text-[11px] font-semibold text-slate-200 text-center leading-tight w-full truncate">
+                      {player.firstName} {player.lastName}
+                    </p>
+
+                    {/* OFFENSE: diski_al — no disk holder yet */}
+                    {gameMode === 'OFFENSE' && !activePasserId && (
+                      <button
+                        type="button"
+                        onClick={() => setActivePasserId(player.id)}
+                        className="w-full py-1.5 mt-0.5 rounded-lg text-[11px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30 transition-all"
+                      >
+                        {t('tracking.diskiAl')}
+                      </button>
+                    )}
+
+                    {/* OFFENSE: this player has the disk */}
+                    {gameMode === 'OFFENSE' && activePasserId && isDiskHolder && (
+                      <button
+                        type="button"
+                        onClick={handleThrowaway}
+                        className="w-full py-1.5 mt-0.5 rounded-lg text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/40 hover:bg-orange-500/30 transition-all"
+                      >
+                        {t('tracking.actions.throwaway')}
+                      </button>
+                    )}
+
+                    {/* OFFENSE: other players (receive candidates) */}
+                    {gameMode === 'OFFENSE' && activePasserId && !isDiskHolder && (
+                      <div className="flex flex-col gap-0.5 w-full mt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleCatch(player.id)}
+                          className="w-full py-1 rounded-lg text-[11px] font-bold bg-green-500/20 text-green-400 border border-green-500/40 hover:bg-green-500/30 transition-all"
+                        >
+                          {t('tracking.actions.passReceived')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDrop(player.id)}
+                          className="w-full py-1 rounded-lg text-[11px] font-bold bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 transition-all"
+                        >
+                          {t('tracking.actions.drop')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleGoalToPlayer(player.id)}
+                          className="w-full py-1 rounded-lg text-[11px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/40 hover:bg-purple-500/30 transition-all"
+                        >
+                          {t('tracking.actions.goal')}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* DEFENSE: blok + callahan per player */}
+                    {gameMode === 'DEFENSE' && (
+                      <div className="flex flex-col gap-0.5 w-full mt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleBlock(player.id)}
+                          className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/40 hover:bg-blue-500/30 transition-all"
+                        >
+                          {t('tracking.actions.block')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCallahan(player.id)}
+                          className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/40 hover:bg-indigo-500/30 transition-all"
+                        >
+                          {t('tracking.actions.callahan')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              {/* Opponent card (defense only) */}
+              {gameMode === 'DEFENSE' && (
+                <div className="flex flex-col items-center gap-1 p-2.5 rounded-2xl border border-white/[0.06] bg-white/[0.02] min-w-[100px]">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase">Rakip</span>
+                  <div className="flex flex-col gap-0.5 w-full mt-0.5">
+                    <button
+                      type="button"
+                      onClick={handleOpponentScore}
+                      className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 transition-all"
+                    >
+                      {t('tracking.actions.opponentScore')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpponentTurnover}
+                      className="w-full py-1.5 rounded-lg text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/40 hover:bg-orange-500/30 transition-all"
+                    >
+                      {t('tracking.actions.opponentError')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Player Picker Overlay ──────────────────────────────────────────── */}
       {playerPickerFor && (

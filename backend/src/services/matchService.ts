@@ -255,21 +255,45 @@ export async function recordEvent(
       }
     }
 
-    // 5. Pass edge for COMPLETION or GOAL with a receiver
+    // 5a. Secondary player stats for DROP (thrower gets successful pass credit)
+    if (input.actionType === 'DROP' && input.secondaryPlayerId) {
+      const dropThrowerDeltas = { successfulPasses: 1, completions: 1 };
+      await tx.frisbeePlayerStat.upsert({
+        where: { playerId: input.secondaryPlayerId },
+        create: { playerId: input.secondaryPlayerId, ...dropThrowerDeltas },
+        update: buildIncrements(dropThrowerDeltas),
+      });
+      await tx.matchPlayerStat.upsert({
+        where: { matchId_playerId: { matchId, playerId: input.secondaryPlayerId } },
+        create: { matchId, playerId: input.secondaryPlayerId, ...dropThrowerDeltas },
+        update: buildIncrements(dropThrowerDeltas),
+      });
+      if (match.tournamentId) {
+        await tx.tournamentPlayerStat.upsert({
+          where: { tournamentId_playerId: { tournamentId: match.tournamentId, playerId: input.secondaryPlayerId } },
+          create: { tournamentId: match.tournamentId, playerId: input.secondaryPlayerId, ...dropThrowerDeltas },
+          update: buildIncrements(dropThrowerDeltas),
+        });
+      }
+    }
+
+    // 5b. Pass edge for COMPLETION, GOAL, or DROP with a secondary player
     if (
-      (input.actionType === 'COMPLETION' || input.actionType === 'GOAL') &&
+      (input.actionType === 'COMPLETION' || input.actionType === 'GOAL' || input.actionType === 'DROP') &&
       input.secondaryPlayerId
     ) {
+      const edgeFrom = input.actionType === 'DROP' ? input.secondaryPlayerId : input.playerId;
+      const edgeTo = input.actionType === 'DROP' ? input.playerId : input.secondaryPlayerId;
       await tx.playerPassEdge.upsert({
         where: {
           fromPlayerId_toPlayerId: {
-            fromPlayerId: input.playerId,
-            toPlayerId: input.secondaryPlayerId,
+            fromPlayerId: edgeFrom,
+            toPlayerId: edgeTo,
           },
         },
         create: {
-          fromPlayerId: input.playerId,
-          toPlayerId: input.secondaryPlayerId,
+          fromPlayerId: edgeFrom,
+          toPlayerId: edgeTo,
           count: 1,
         },
         update: { count: { increment: 1 } },
@@ -350,21 +374,45 @@ export async function undoLastEvent(
       }
     }
 
+    // Undo thrower stats for DROP
+    if (lastEvent.actionType === 'DROP' && lastEvent.secondaryPlayerId) {
+      const dropThrowerDeltas = { successfulPasses: 1, completions: 1 };
+      await tx.frisbeePlayerStat.upsert({
+        where: { playerId: lastEvent.secondaryPlayerId },
+        create: { playerId: lastEvent.secondaryPlayerId },
+        update: buildDecrements(dropThrowerDeltas),
+      });
+      await tx.matchPlayerStat.upsert({
+        where: { matchId_playerId: { matchId, playerId: lastEvent.secondaryPlayerId } },
+        create: { matchId, playerId: lastEvent.secondaryPlayerId },
+        update: buildDecrements(dropThrowerDeltas),
+      });
+      if (match.tournamentId) {
+        await tx.tournamentPlayerStat.upsert({
+          where: { tournamentId_playerId: { tournamentId: match.tournamentId, playerId: lastEvent.secondaryPlayerId } },
+          create: { tournamentId: match.tournamentId, playerId: lastEvent.secondaryPlayerId },
+          update: buildDecrements(dropThrowerDeltas),
+        });
+      }
+    }
+
     // Undo pass edge if applicable
     if (
-      (lastEvent.actionType === 'COMPLETION' || lastEvent.actionType === 'GOAL') &&
+      (lastEvent.actionType === 'COMPLETION' || lastEvent.actionType === 'GOAL' || lastEvent.actionType === 'DROP') &&
       lastEvent.secondaryPlayerId
     ) {
+      const edgeFrom = lastEvent.actionType === 'DROP' ? lastEvent.secondaryPlayerId : lastEvent.playerId;
+      const edgeTo = lastEvent.actionType === 'DROP' ? lastEvent.playerId : lastEvent.secondaryPlayerId;
       await tx.playerPassEdge.upsert({
         where: {
           fromPlayerId_toPlayerId: {
-            fromPlayerId: lastEvent.playerId,
-            toPlayerId: lastEvent.secondaryPlayerId,
+            fromPlayerId: edgeFrom,
+            toPlayerId: edgeTo,
           },
         },
         create: {
-          fromPlayerId: lastEvent.playerId,
-          toPlayerId: lastEvent.secondaryPlayerId,
+          fromPlayerId: edgeFrom,
+          toPlayerId: edgeTo,
           count: 0,
         },
         update: { count: { decrement: 1 } },
