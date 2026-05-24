@@ -188,10 +188,10 @@ export default function Roster() {
             </div>
           )}
           {!playersLoading && !playersError && players.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
               {players.map((p) => (
                 <div key={p.id} className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4 flex flex-col gap-3 hover:border-white/[0.14] transition-all">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col items-center gap-2 text-center">
                     {p.photoUrl ? (
                       <img
                         src={p.photoUrl}
@@ -205,33 +205,14 @@ export default function Roster() {
                         </span>
                       </div>
                     )}
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-100 truncate">{p.firstName} {p.lastName}</p>
+                    <div>
+                      <p className="font-semibold text-slate-100">{p.firstName} {p.lastName}</p>
                       <span className={`inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${POSITION_COLORS[p.position]}`}>
                         {t(`roster.positions.${p.position}`)}
                       </span>
                     </div>
-                    <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-green-500/10 border border-green-500/20 font-mono text-sm font-bold text-green-400 shrink-0">
-                      {p.jerseyNumber}
-                    </span>
                   </div>
-                  <div className="flex gap-2 pt-1 border-t border-white/[0.06]">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(p)}
-                      className="flex-1 py-1.5 text-sm font-medium text-green-400 hover:text-green-300 hover:bg-green-500/[0.08] rounded-lg transition-colors"
-                    >
-                      {t('common.edit')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(p.id)}
-                      disabled={deletingId === p.id}
-                      className="flex-1 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/[0.08] rounded-lg disabled:opacity-50 transition-colors"
-                    >
-                      {deletingId === p.id ? t('common.deleting') : t('common.delete')}
-                    </button>
-                  </div>
+
                 </div>
               ))}
             </div>

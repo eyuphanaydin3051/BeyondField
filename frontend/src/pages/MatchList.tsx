@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
 import apiClient from '../lib/apiClient'
@@ -29,6 +29,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function MatchList() {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const selectedTeam = useAppStore((s) => s.selectedTeam)
   const teamId = selectedTeam?.id
 
@@ -169,7 +170,7 @@ export default function MatchList() {
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
               {matches.map((m) => (
-                <tr key={m.id} className="hover:bg-white/[0.02] transition-colors">
+                <tr key={m.id} onClick={() => navigate(`/matches/${m.id}`)} className="hover:bg-white/[0.02] transition-colors cursor-pointer">
                   <td className="px-4 py-3 text-sm text-slate-400 whitespace-nowrap tabular-nums">{fmtDate(m.matchDate)}</td>
                   <td className="px-4 py-3">
                     <Link to={`/matches/${m.id}`} className="text-green-400 hover:text-green-300 font-semibold transition-colors">
@@ -195,7 +196,7 @@ export default function MatchList() {
                   <td className="px-4 py-3 text-right">
                     <button
                       type="button"
-                      onClick={() => handleDelete(m.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(m.id) }}
                       disabled={deletingId === m.id}
                       className="text-red-400 hover:text-red-300 text-sm font-medium disabled:opacity-50 transition-colors"
                     >
