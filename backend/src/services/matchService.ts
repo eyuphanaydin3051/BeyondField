@@ -551,32 +551,63 @@ export async function archivePoint(
           },
         });
 
-        const deltas = getStatDeltas(evt.actionType);
-        if (Object.keys(deltas).length === 0) continue;
+        // In Frisbee: when GOAL has a receiver (secondaryPlayerId), the thrower
+        // earns an ASSIST and the receiver earns the GOAL — not both to the thrower.
+        const isAssistGoal = evt.actionType === 'GOAL' && !!evt.secondaryPlayerId;
+        let deltas = getStatDeltas(evt.actionType);
+        if (isAssistGoal) deltas = { assists: 1 };
+        if (Object.keys(deltas).length === 0 && !isAssistGoal) continue;
 
-        const incs = buildIncrements(deltas);
+        if (Object.keys(deltas).length > 0) {
+          const incs = buildIncrements(deltas);
 
-        // 2. Career stats
-        await tx.frisbeePlayerStat.upsert({
-          where: { playerId: evt.playerId },
-          create: { playerId: evt.playerId, ...deltas },
-          update: incs,
-        });
-
-        // 3. Match stats
-        await tx.matchPlayerStat.upsert({
-          where: { matchId_playerId: { matchId, playerId: evt.playerId } },
-          create: { matchId, playerId: evt.playerId, ...deltas },
-          update: incs,
-        });
-
-        // 4. Tournament stats
-        if (match.tournamentId) {
-          await tx.tournamentPlayerStat.upsert({
-            where: { tournamentId_playerId: { tournamentId: match.tournamentId, playerId: evt.playerId } },
-            create: { tournamentId: match.tournamentId, playerId: evt.playerId, ...deltas },
+          // 2. Career stats
+          await tx.frisbeePlayerStat.upsert({
+            where: { playerId: evt.playerId },
+            create: { playerId: evt.playerId, ...deltas },
             update: incs,
           });
+
+          // 3. Match stats
+          await tx.matchPlayerStat.upsert({
+            where: { matchId_playerId: { matchId, playerId: evt.playerId } },
+            create: { matchId, playerId: evt.playerId, ...deltas },
+            update: incs,
+          });
+
+          // 4. Tournament stats
+          if (match.tournamentId) {
+            await tx.tournamentPlayerStat.upsert({
+              where: { tournamentId_playerId: { tournamentId: match.tournamentId, playerId: evt.playerId } },
+              create: { tournamentId: match.tournamentId, playerId: evt.playerId, ...deltas },
+              update: incs,
+            });
+          }
+        }
+
+        // Award GOAL to the receiver when this is a pass-for-score
+        if (isAssistGoal) {
+          const receiverInLineup = players.find(p => p.id === evt.secondaryPlayerId);
+          if (receiverInLineup) {
+            const goalIncs = buildIncrements({ goals: 1 });
+            await tx.frisbeePlayerStat.upsert({
+              where: { playerId: evt.secondaryPlayerId! },
+              create: { playerId: evt.secondaryPlayerId!, goals: 1 },
+              update: goalIncs,
+            });
+            await tx.matchPlayerStat.upsert({
+              where: { matchId_playerId: { matchId, playerId: evt.secondaryPlayerId! } },
+              create: { matchId, playerId: evt.secondaryPlayerId!, goals: 1 },
+              update: goalIncs,
+            });
+            if (match.tournamentId) {
+              await tx.tournamentPlayerStat.upsert({
+                where: { tournamentId_playerId: { tournamentId: match.tournamentId, playerId: evt.secondaryPlayerId! } },
+                create: { tournamentId: match.tournamentId, playerId: evt.secondaryPlayerId!, goals: 1 },
+                update: goalIncs,
+              });
+            }
+          }
         }
 
         // 5. Pass edge (COMPLETION and GOAL)
@@ -616,6 +647,14 @@ export async function archivePoint(
         }
       }
     }
+
+    // Persist the updated score on the match record
+    const newHomeScore = input.whoScored === 'US' ? match.homeScore + 1 : match.homeScore;
+    const newAwayScore = input.whoScored === 'THEM' ? match.awayScore + 1 : match.awayScore;
+    await tx.match.update({
+      where: { id: matchId },
+      data: { homeScore: newHomeScore, awayScore: newAwayScore },
+    });
   });
 
   return { status: 'success' };

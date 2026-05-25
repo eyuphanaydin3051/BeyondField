@@ -368,6 +368,9 @@
       "button": "Maçı Bitir",
       "cancel": "İptal"
     },
+    "errors": {
+      "archiveFailed": "Sayı kaydedilemedi. Lütfen tekrar deneyin."
+    },
     "diskiAl": "DİSKİ AL",
     "liveEvents": "CANLI OLAY GEÇMİŞİ",
     "noEventsYet": "Henüz olay yok",

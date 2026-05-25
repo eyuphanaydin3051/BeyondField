@@ -27,6 +27,7 @@ Goal butonu: bu butona basıldığında örnek olarak A oyuncusu diske sahipken 
 	3) pas ağı için A oyuncusunun B oyuncusuna başarılı pas attığı kaydedilir
 	4) bu aksiyonun youtube videosunda ne zaman gerçekleştiği kaydedilir
 	5) sayı biter ve yeni sayı başlatılır
+	6)takımımızın skoru 1  artar
 Defans başlangıç senaryosu
 
 Takımın sayıya defans başlayacağı seçildiğinde pull atacak oyuncu seçiminin yapılması istenir pulu atan oyuncu seçildiğinde pull süresini başlat butonu belirir ve bu buton basıldığında pull süresi akamaya başlar bu butona tekrar basıldığında süre durur ve pullun başarılı olup olmadığı sorusu sorulur (bu sorunun cevabının bir etkisi yoktur) bu soru cevaplandıktan sonra oyuncu kartlarında callahan ve blok tuşları belirir ve ekranın müsait bir bölümünde de rakip takımın aksiyon butonları belirir

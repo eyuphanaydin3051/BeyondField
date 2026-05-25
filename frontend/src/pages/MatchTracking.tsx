@@ -106,6 +106,7 @@ export default function MatchTracking() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   // ── Tracking state ──────────────────────────────────────────────────────
   const [trackingStep, setTrackingStep] = useState<TrackingStep>('roster')
@@ -272,9 +273,17 @@ export default function MatchTracking() {
         gameMode,
         eventsToSend,
       )
-    } finally {
+    } catch {
       setActionLoading(false)
+      // Roll back the tentative event + history entry the caller added before this call
+      setLocalPointEvents((prev) => prev.slice(0, -1))
+      setHistoryStack((prev) => prev.slice(0, -1))
+      setLiveEvents((prev) => prev.slice(0, -1))
+      setActionError(t('tracking.errors.archiveFailed'))
+      return
     }
+    setActionLoading(false)
+    setActionError(null)
     setLastLineup(selectedLineup)
     setHomeScore(newHome)
     setAwayScore(newAway)
@@ -296,7 +305,7 @@ export default function MatchTracking() {
     setPullingPlayerId(null)
     setPullTimerMs(0)
     setPullTimerRunning(false)
-  }, [matchId, selectedLineup, gameMode, localPointEvents])
+  }, [matchId, selectedLineup, gameMode, localPointEvents, t])
 
   const handleCatch = useCallback((receiverId: string) => {
     if (!matchId || !activePasserId) return
@@ -827,7 +836,10 @@ export default function MatchTracking() {
 
           {/* YouTube video (set on Match Detail page) */}
           {youtubeVideoId ? (
-            <div className="relative w-full aspect-video min-h-0 flex-shrink bg-black">
+            <div className={[
+              'relative w-full bg-black min-h-0',
+              (isPullPhase && gameMode === 'DEFENSE') ? 'flex-[0_0_40%] overflow-hidden' : 'aspect-video flex-shrink',
+            ].join(' ')}>
               <YouTube
                 videoId={youtubeVideoId}
                 opts={{ width: '100%', height: '100%', playerVars: { controls: 1, rel: 0 } }}
@@ -837,14 +849,17 @@ export default function MatchTracking() {
               />
             </div>
           ) : (
-            <div className="w-full aspect-video min-h-0 flex-shrink flex items-center justify-center gap-2 bg-white/[0.02] border-b border-white/[0.06] text-xs text-slate-500">
+            <div className={[
+              'w-full min-h-0 flex items-center justify-center gap-2 bg-white/[0.02] border-b border-white/[0.06] text-xs text-slate-500',
+              (isPullPhase && gameMode === 'DEFENSE') ? 'flex-[0_0_40%]' : 'aspect-video flex-shrink',
+            ].join(' ')}>
               📹 {t('tracking.noVideoBound')}
             </div>
           )}
 
           {/* Pull phase UI (shown in left area when in pull phase) */}
           {gameMode === 'DEFENSE' && isPullPhase && (
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
               {!pullingPlayerId ? (
                 <div>
                   <p className="text-sm font-semibold text-slate-300 mb-3">{t('tracking.pull.selectPuller')}</p>
@@ -936,6 +951,20 @@ export default function MatchTracking() {
           </div>
         </div>
       </div>
+
+      {/* ── Error banner ── */}
+      {actionError && (
+        <div className="flex-shrink-0 flex items-center justify-between gap-2 px-4 py-2 bg-red-500/15 border-t border-red-500/30">
+          <p className="text-xs font-semibold text-red-400">{actionError}</p>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="text-red-400 hover:text-red-200 text-sm font-bold transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* ── Bottom: horizontal player cards ── */}
       {!isPullPhase && (
