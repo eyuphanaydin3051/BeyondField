@@ -259,16 +259,18 @@ export default function MatchTracking() {
     who: 'US' | 'THEM',
     newHome: number,
     newAway: number,
+    finalEvent?: LocalPointEvent,
   ) => {
     if (!matchId) return
     setActionLoading(true)
     try {
+      const eventsToSend = finalEvent ? [...localPointEvents, finalEvent] : localPointEvents
       await archivePointApi(
         matchId,
         selectedLineup.map((p) => p.id),
         who,
         gameMode,
-        localPointEvents,
+        eventsToSend,
       )
     } finally {
       setActionLoading(false)
@@ -350,10 +352,11 @@ export default function MatchTracking() {
     pushHistory()
     const scorer = selectedLineup.find((p) => p.id === playerId)
     const newHomeScore = homeScore + 1
-    addLocalEvent({ actionType: 'CALLAHAN', playerId, videoTimestampSeconds: vts(), scoreUsAtEvent: newHomeScore, scoreThemAtEvent: awayScore })
+    const event: LocalPointEvent = { actionType: 'CALLAHAN', playerId, videoTimestampSeconds: vts(), scoreUsAtEvent: newHomeScore, scoreThemAtEvent: awayScore }
+    addLocalEvent(event)
     pushLiveEvent(`${scorer?.firstName} ${scorer?.lastName}: Callahan`)
     setPlayerPickerFor(null)
-    await finishPoint('US', newHomeScore, awayScore)
+    await finishPoint('US', newHomeScore, awayScore, event)
   }, [matchId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, addLocalEvent, finishPoint, vts])
 
   const handleOpponentTurnover = useCallback(() => {
@@ -369,23 +372,27 @@ export default function MatchTracking() {
     const activePlayer = selectedLineup.find((p) => p.id === activePasserId)
     let newHome = homeScore
     let newAway = awayScore
+    let finalEvent: LocalPointEvent
     if (who === 'US') {
       newHome = homeScore + 1
-      addLocalEvent({ actionType: 'GOAL', playerId: activePasserId, videoTimestampSeconds: vts(), scoreUsAtEvent: newHome, scoreThemAtEvent: awayScore })
+      finalEvent = { actionType: 'GOAL', playerId: activePasserId, videoTimestampSeconds: vts(), scoreUsAtEvent: newHome, scoreThemAtEvent: awayScore }
+      addLocalEvent(finalEvent)
       pushLiveEvent(`${activePlayer?.firstName} ${activePlayer?.lastName}: Gol`)
     } else {
       newAway = awayScore + 1
-      addLocalEvent({ actionType: 'OPPONENT_GOAL', playerId: 'opponent', videoTimestampSeconds: vts(), scoreUsAtEvent: homeScore, scoreThemAtEvent: newAway })
+      finalEvent = { actionType: 'OPPONENT_GOAL', playerId: 'opponent', videoTimestampSeconds: vts(), scoreUsAtEvent: homeScore, scoreThemAtEvent: newAway }
+      addLocalEvent(finalEvent)
     }
-    await finishPoint(who, newHome, newAway)
+    await finishPoint(who, newHome, newAway, finalEvent)
   }, [matchId, activePasserId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, addLocalEvent, finishPoint, vts])
 
   const handleOpponentScore = useCallback(async () => {
     if (!matchId) return
     pushHistory()
     const newAway = awayScore + 1
-    addLocalEvent({ actionType: 'OPPONENT_GOAL', playerId: 'opponent', videoTimestampSeconds: vts(), scoreUsAtEvent: homeScore, scoreThemAtEvent: newAway })
-    await finishPoint('THEM', homeScore, newAway)
+    const event: LocalPointEvent = { actionType: 'OPPONENT_GOAL', playerId: 'opponent', videoTimestampSeconds: vts(), scoreUsAtEvent: homeScore, scoreThemAtEvent: newAway }
+    addLocalEvent(event)
+    await finishPoint('THEM', homeScore, newAway, event)
   }, [matchId, homeScore, awayScore, pushHistory, addLocalEvent, finishPoint, vts])
 
   const handleGoalToPlayer = useCallback(async (receiverId: string) => {
@@ -394,9 +401,10 @@ export default function MatchTracking() {
     const thrower = selectedLineup.find((p) => p.id === activePasserId)
     const receiver = selectedLineup.find((p) => p.id === receiverId)
     const newHomeScore = homeScore + 1
-    addLocalEvent({ actionType: 'GOAL', playerId: activePasserId, secondaryPlayerId: receiverId, videoTimestampSeconds: vts(), scoreUsAtEvent: newHomeScore, scoreThemAtEvent: awayScore })
+    const event: LocalPointEvent = { actionType: 'GOAL', playerId: activePasserId, secondaryPlayerId: receiverId, videoTimestampSeconds: vts(), scoreUsAtEvent: newHomeScore, scoreThemAtEvent: awayScore }
+    addLocalEvent(event)
     pushLiveEvent(`${thrower?.firstName} ${thrower?.lastName}: Asist → ${receiver?.firstName} ${receiver?.lastName}: Gol`)
-    await finishPoint('US', newHomeScore, awayScore)
+    await finishPoint('US', newHomeScore, awayScore, event)
   }, [matchId, activePasserId, selectedLineup, homeScore, awayScore, pushHistory, pushLiveEvent, addLocalEvent, finishPoint, vts])
 
   const handleUndo = useCallback(() => {
